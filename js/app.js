@@ -19,6 +19,9 @@ import {
 import { TYPES } from "./types.js";
 import { calculateDamage } from "./damage.js";
 
+const HISTORY_KEY = "damekei-history-v1";
+const HISTORY_MAX = 40;
+
 const state = {
   pokemon: [],
   moves: [],
@@ -36,7 +39,126 @@ const state = {
   defAbility: "",
   atkRanks: emptyRanks(),
   defRanks: emptyRanks(),
+  lastHistoryFingerprint: "",
 };
+
+/** ひらがな↔カタカナを揃えて部分一致（「りざーどん」→リザードン） */
+function toKatakana(str) {
+  return String(str || "").replace(/[\u3041-\u3096]/g, (ch) =>
+    String.fromCharCode(ch.charCodeAt(0) + 0x60)
+  );
+}
+
+function normalizeForSearch(str) {
+  return toKatakana(str)
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/[゛゜ﾞﾟ\s　]/g, "");
+}
+
+function textMatchesQuery(text, query) {
+  const q = normalizeForSearch(query);
+  if (!q) return true;
+  return normalizeForSearch(text).includes(q);
+}
+
+function loadHistory() {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    const list = raw ? JSON.parse(raw) : [];
+    return Array.isArray(list) ? list : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveHistory(list) {
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(list.slice(0, HISTORY_MAX)));
+}
+
+function pushHistoryEntry(entry) {
+  const list = loadHistory().filter((h) => h.fingerprint !== entry.fingerprint);
+  list.unshift(entry);
+  saveHistory(list);
+}
+
+function formatHistoryTime(ts) {
+  try {
+    return new Date(ts).toLocaleString("ja-JP", {
+      month: "numeric",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return "";
+  }
+}
+
+function openHistoryModal() {
+  const list = loadHistory();
+  openModal(
+    "計算履歴",
+    `
+    <div class="history-toolbar">
+      <button type="button" class="icon-btn" id="history-clear" ${list.length ? "" : "disabled"}>すべて削除</button>
+      <span class="hint">最新 ${HISTORY_MAX} 件まで保存（この端末）</span>
+    </div>
+    <div class="list" id="history-list">
+      ${
+        list.length === 0
+          ? `<div class="history-empty">まだ履歴がありません。<br/>計算すると自動で残ります。</div>`
+          : list
+              .map(
+                (h, i) => `
+        <div class="list-item history-item" data-idx="${i}">
+          <div class="n">${h.atkName} の ${h.moveName} → ${h.defName}</div>
+          <div class="s">${h.summary}${h.critSummary ? `　／　急所 ${h.critSummary}` : ""}<br/>${formatHistoryTime(h.ts)}</div>
+        </div>`
+              )
+              .join("")
+      }
+    </div>
+  `
+  );
+
+  $("history-clear")?.addEventListener("click", () => {
+    if (!list.length) return;
+    if (!confirm("計算履歴をすべて削除しますか？")) return;
+    saveHistory([]);
+    state.lastHistoryFingerprint = "";
+    openHistoryModal();
+  });
+
+  $("history-list")?.querySelectorAll(".history-item").forEach((el) => {
+    el.addEventListener("click", () => {
+      const item = list[Number(el.dataset.idx)];
+      if (!item) return;
+      openModal(
+        "履歴詳細",
+        `
+        <div class="result-sub">${item.atkName} の ${item.moveName} → ${item.defName}</div>
+        <div class="result-main" style="font-size:1.1rem;margin:6px 0">${item.summary}</div>
+        ${
+          item.critSummary
+            ? `<div class="result-sub">急所: ${item.critSummary}</div>`
+            : ""
+        }
+        <div class="result-sub" style="margin-top:8px">${formatHistoryTime(item.ts)}</div>
+        <div class="history-toolbar" style="margin-top:12px">
+          <button type="button" class="icon-btn" id="history-back">一覧へ戻る</button>
+          <button type="button" class="icon-btn" id="history-delete-one">この件を削除</button>
+        </div>
+      `
+      );
+      $("history-back")?.addEventListener("click", openHistoryModal);
+      $("history-delete-one")?.addEventListener("click", () => {
+        saveHistory(loadHistory().filter((h) => h.fingerprint !== item.fingerprint));
+        openHistoryModal();
+      });
+    });
+  });
+}
 
 async function loadData() {
   const [pokemon, moves, items] = await Promise.all([
@@ -361,7 +483,7 @@ function openPokemonPicker(side) {
 
   openModal(side === "atk" ? "攻撃側ポケモン" : "防御側ポケモン", `
     <div class="filters">
-      <input type="text" id="poke-q" placeholder="名前検索" autocomplete="off" />
+      <input type="text" id="poke-q" placeholder="名前検索（ひらがな可）" autocomplete="off" />
       <div class="row">
         <select id="poke-type">
           <option value="">タイプ（すべて）</option>
@@ -381,7 +503,7 @@ function openPokemonPicker(side) {
     const type = $("poke-type").value;
     const gen = $("poke-gen").value;
     const list = state.pokemon.filter((p) => {
-      if (q && !p.name.includes(q)) return false;
+      if (q && !textMatchesQuery(p.name, q)) return false;
       if (type && !p.types.includes(type)) return false;
       if (gen && genOf(p.dex) !== Number(gen)) return false;
       return true;
@@ -418,7 +540,7 @@ function openMovePicker() {
   const atkTypes = state.atk?.types || [];
   openModal("使う技", `
     <div class="filters">
-      <input type="text" id="move-q" placeholder="技名検索" autocomplete="off" />
+      <input type="text" id="move-q" placeholder="技名検索（ひらがな可）" autocomplete="off" />
       <div class="row">
         <select id="move-type">
           <option value="">タイプ（すべて）</option>
@@ -442,7 +564,7 @@ function openMovePicker() {
     const cat = $("move-cat").value;
     const stabOnly = $("move-stab-only")?.checked;
     let list = state.moves.filter((m) => {
-      if (q && !m.name.includes(q)) return false;
+      if (q && !textMatchesQuery(m.name, q)) return false;
       if (type && m.type !== type) return false;
       if (cat && m.category !== cat) return false;
       if (stabOnly && atkTypes.length && !atkTypes.includes(m.type)) return false;
@@ -485,7 +607,7 @@ function openMovePicker() {
 function openItemPicker(side) {
   openModal(side === "atk" ? "攻撃側の持ち物" : "防御側の持ち物", `
     <div class="filters">
-      <input type="text" id="item-q" placeholder="名前検索" autocomplete="off" />
+      <input type="text" id="item-q" placeholder="名前検索（ひらがな可）" autocomplete="off" />
       <select id="item-cat">
         <option value="">カテゴリ（すべて）</option>
         <option value="どうぐ">どうぐ</option>
@@ -500,7 +622,7 @@ function openItemPicker(side) {
     const q = ($("item-q").value || "").trim();
     const cat = $("item-cat").value;
     const list = state.items.filter((it) => {
-      if (q && !it.name.includes(q)) return false;
+      if (q && !textMatchesQuery(it.name, q)) return false;
       if (cat && it.category !== cat) return false;
       return true;
     });
@@ -669,6 +791,29 @@ function recalc() {
     </details>
   `;
   $("result-mini").textContent = main;
+
+  const fingerprint = [
+    state.atk.name,
+    state.def.name,
+    state.move.name,
+    main,
+    crit?.koText || "",
+    crit ? `${crit.percentMin}-${crit.percentMax}` : "",
+  ].join("|");
+  if (fingerprint !== state.lastHistoryFingerprint) {
+    state.lastHistoryFingerprint = fingerprint;
+    pushHistoryEntry({
+      fingerprint,
+      ts: Date.now(),
+      atkName: state.atk.name,
+      defName: state.def.name,
+      moveName: state.move.name,
+      summary: main,
+      critSummary: crit
+        ? `${crit.percentMin}％～${crit.percentMax}％ ${crit.koText}`
+        : "",
+    });
+  }
 }
 
 function wire() {
@@ -683,6 +828,7 @@ function wire() {
   $("move-btn").addEventListener("click", openMovePicker);
   $("atk-item-btn").addEventListener("click", () => openItemPicker("atk"));
   $("def-item-btn").addEventListener("click", () => openItemPicker("def"));
+  $("history-btn").addEventListener("click", openHistoryModal);
   $("modal-close").addEventListener("click", closeModal);
   $("modal").addEventListener("click", (e) => {
     if (e.target === $("modal")) closeModal();

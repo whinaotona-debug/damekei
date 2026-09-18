@@ -59,17 +59,24 @@ html, body {
   color: var(--muted);
 }
 .result-mini {
-  margin-left: auto;
+  margin-left: 0;
   font-weight: 800;
   font-size: 0.95rem;
   background: #fff;
   border: 1px solid var(--line);
   border-radius: 999px;
   padding: 6px 12px;
-  max-width: 55%;
+  max-width: min(48vw, 420px);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.header-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 
 .main-grid {
@@ -516,6 +523,24 @@ details.calc-details ul { margin: 4px 0 0; padding-left: 1.1rem; }
 }
 .list-item .n { font-weight: 700; font-size: 0.92rem; }
 .list-item .s { font-size: 0.72rem; color: var(--muted); margin-top: 2px; }
+.list-item.history-item .n { font-size: 0.88rem; }
+.history-toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.history-toolbar .hint {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-left: auto;
+}
+.history-empty {
+  padding: 16px 8px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
 .icon-btn {
   border: none;
   background: #e8eef2;
