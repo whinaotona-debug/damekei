@@ -60,7 +60,7 @@ function renderSlot(side) {
   const detail = $(`${side}-detail`);
   if (!poke) {
     slot.classList.remove("filled");
-    slot.innerHTML = `<span class="placeholder">ここにポケモン</span>`;
+    slot.textContent = "ここにポケモン";
     detail.hidden = true;
     detail.innerHTML = "";
     return;
@@ -71,20 +71,21 @@ function renderSlot(side) {
   const stats = calcAllStats(poke.baseStats, evs, nature);
   const ability = state[`${side}Ability`];
   const ranks = state[`${side}Ranks`];
+  const base = poke.baseStats;
+  const evSum = totalEv(evs);
 
   slot.classList.add("filled");
   slot.innerHTML = `
     <div>
       <div class="name">${poke.name}</div>
       ${typeBadges(poke.types)}
-      <div class="meta">No.${String(poke.dex).padStart(4, "0")}　特性: ${ability || "—"}</div>
+      <div class="meta">No.${String(poke.dex).padStart(4, "0")}　${ability || "—"}</div>
     </div>
   `;
 
   const abilityOptions = (poke.abilities || [])
     .map((a) => `<option value="${a}" ${a === ability ? "selected" : ""}>${a}</option>`)
     .join("");
-
   const natureOptions = NATURES.map(
     (n) => `<option value="${n.name}" ${n.name === nature ? "selected" : ""}>${n.name}</option>`
   ).join("");
@@ -92,8 +93,8 @@ function renderSlot(side) {
   const evCells = STAT_KEYS.map(
     (k) => `
     <div class="ev-cell">
-      <label>${STAT_LABELS[k]} EV</label>
-      <input type="number" min="0" max="252" step="4" data-side="${side}" data-ev="${k}" value="${evs[k]}" />
+      <label>${STAT_LABELS[k]}</label>
+      <input type="number" inputmode="numeric" min="0" max="252" step="4" data-ev="${k}" value="${evs[k]}" />
     </div>`
   ).join("");
 
@@ -102,60 +103,58 @@ function renderSlot(side) {
   const rankCells = rankKeys
     .map(
       (k) => `
-    <div class="ev-cell">
-      <label>${rankLabels[k]}ランク</label>
-      <input type="number" min="-6" max="6" step="1" data-side="${side}" data-rank="${k}" value="${ranks[k] || 0}" />
+    <div class="rank-cell">
+      <label>${rankLabels[k]}</label>
+      <input type="number" inputmode="numeric" min="-6" max="6" step="1" data-rank="${k}" value="${ranks[k] || 0}" />
     </div>`
     )
     .join("");
 
-  const base = poke.baseStats;
-  const evSum = totalEv(evs);
-
   detail.hidden = false;
   detail.innerHTML = `
     <div class="base-stats-line">
-      種族値　H${base.hp} A${base.atk} B${base.def} C${base.spa} D${base.spd} S${base.spe}
-      （合計 ${base.hp + base.atk + base.def + base.spa + base.spd + base.spe}）
+      種族値 H${base.hp} A${base.atk} B${base.def} C${base.spa} D${base.spd} S${base.spe}
+      （${base.hp + base.atk + base.def + base.spa + base.spd + base.spe}）
     </div>
-    <div class="stats-grid">
+    <div class="stats-inline" data-stats="${side}">
       ${STAT_KEYS.map(
-        (k) => `
-        <div class="stat-box">
-          <div class="label">${STAT_LABELS[k]}</div>
-          <div class="vals"><span>実数値</span><strong>${stats[k]}</strong></div>
-          <div class="vals"><span>種族</span><span>${base[k]}</span></div>
-          <div class="vals"><span>努力</span><span>${evs[k]}</span></div>
-        </div>`
+        (k) => `<div class="cell"><span>${STAT_LABELS[k]}</span><strong data-stat="${k}">${stats[k]}</strong></div>`
       ).join("")}
     </div>
-    <div class="controls">
-      <div class="ctrl-row">
-        <label>特性</label>
-        <select data-side="${side}" data-field="ability" ${poke.abilities?.length ? "" : "disabled"}>
-          ${abilityOptions || "<option>なし</option>"}
-        </select>
-      </div>
-      ${
-        poke.abilities?.length > 1
-          ? `<div class="ability-note">特性が複数あるので切り替えできます</div>`
-          : ""
-      }
-      <div class="ctrl-row">
-        <label>性格</label>
-        <select data-side="${side}" data-field="nature">${natureOptions}</select>
-      </div>
-      <div>
-        <div class="label" style="font-size:0.82rem;color:var(--muted);margin-bottom:4px">努力値</div>
-        <div class="ev-grid">${evCells}</div>
-        <div class="ev-total ${evSum > 510 ? "warn" : ""}" data-ev-total="${side}">合計 ${evSum} / 510</div>
-      </div>
-      <div>
-        <div class="label" style="font-size:0.82rem;color:var(--muted);margin-bottom:4px">能力ランク</div>
-        <div class="rank-grid">${rankCells}</div>
-      </div>
+    <div class="ctrl-row">
+      <label>特性</label>
+      <select data-field="ability">${abilityOptions || "<option>なし</option>"}</select>
     </div>
+    ${poke.abilities?.length > 1 ? `<div class="ability-note">特性を切り替えできます</div>` : ""}
+    <div class="ctrl-row">
+      <label>性格</label>
+      <select data-field="nature">${natureOptions}</select>
+    </div>
+    <div class="ev-row">${evCells}</div>
+    <div class="ev-total ${evSum > 510 ? "warn" : ""}" data-ev-total>合計 ${evSum} / 510</div>
+    <div class="rank-row">${rankCells}</div>
   `;
+}
+
+function updateLiveStats(side) {
+  const poke = state[side];
+  if (!poke) return;
+  const detail = $(`${side}-detail`);
+  const stats = calcAllStats(poke.baseStats, state[`${side}Evs`], state[`${side}Nature`]);
+  for (const k of STAT_KEYS) {
+    const el = detail.querySelector(`[data-stat="${k}"]`);
+    if (el) el.textContent = String(stats[k]);
+  }
+  const sum = totalEv(state[`${side}Evs`]);
+  const totalEl = detail.querySelector("[data-ev-total]");
+  if (totalEl) {
+    totalEl.textContent = `合計 ${sum} / 510`;
+    totalEl.classList.toggle("warn", sum > 510);
+  }
+  const slotMeta = $(`${side}-slot`).querySelector(".meta");
+  if (slotMeta) {
+    slotMeta.textContent = `No.${String(poke.dex).padStart(4, "0")}　${state[`${side}Ability`] || "—"}`;
+  }
 }
 
 function bindDetailEvents(side) {
@@ -165,37 +164,57 @@ function bindDetailEvents(side) {
     if (!(t instanceof HTMLElement)) return;
     if (t.dataset.field === "ability") {
       state[`${side}Ability`] = t.value;
-      renderSlot(side);
+      updateLiveStats(side);
       recalc();
     }
     if (t.dataset.field === "nature") {
       state[`${side}Nature`] = t.value;
-      renderSlot(side);
+      updateLiveStats(side);
+      recalc();
+    }
+    if (t.dataset.ev) {
+      let v = Number(t.value);
+      if (!Number.isFinite(v)) v = 0;
+      v = Math.max(0, Math.min(252, v));
+      t.value = String(v);
+      state[`${side}Evs`][t.dataset.ev] = v;
+      updateLiveStats(side);
+      recalc();
+    }
+    if (t.dataset.rank) {
+      let v = Number(t.value);
+      if (!Number.isFinite(v)) v = 0;
+      v = Math.max(-6, Math.min(6, v));
+      t.value = String(v);
+      state[`${side}Ranks`][t.dataset.rank] = v;
       recalc();
     }
   });
   detail.addEventListener("input", (e) => {
     const t = e.target;
     if (!(t instanceof HTMLInputElement)) return;
+    // 入力中は DOM を壊さず state だけ更新（キャレット維持）
     if (t.dataset.ev) {
-      let v = Number(t.value) || 0;
-      v = Math.max(0, Math.min(252, v));
-      state[`${side}Evs`][t.dataset.ev] = v;
-      const stats = calcAllStats(state[side].baseStats, state[`${side}Evs`], state[`${side}Nature`]);
-      // soft update numbers without full rebuild for smoother UX — full rebuild ok
-      renderSlot(side);
-      // restore focus roughly
-      const again = detail.querySelector(`input[data-ev="${t.dataset.ev}"]`);
-      if (again) {
-        again.focus();
-        again.setSelectionRange?.(String(again.value).length, String(again.value).length);
+      const raw = t.value;
+      if (raw === "" || raw === "-") {
+        state[`${side}Evs`][t.dataset.ev] = 0;
+      } else {
+        let v = Number(raw);
+        if (!Number.isFinite(v)) return;
+        state[`${side}Evs`][t.dataset.ev] = Math.max(0, Math.min(252, v));
       }
+      updateLiveStats(side);
       recalc();
     }
     if (t.dataset.rank) {
-      let v = Number(t.value) || 0;
-      v = Math.max(-6, Math.min(6, v));
-      state[`${side}Ranks`][t.dataset.rank] = v;
+      const raw = t.value;
+      if (raw === "" || raw === "-") {
+        state[`${side}Ranks`][t.dataset.rank] = 0;
+      } else {
+        let v = Number(raw);
+        if (!Number.isFinite(v)) return;
+        state[`${side}Ranks`][t.dataset.rank] = Math.max(-6, Math.min(6, v));
+      }
       recalc();
     }
   });
@@ -403,6 +422,7 @@ function recalc() {
   const box = $("result");
   if (!state.atk || !state.def || !state.move) {
     box.innerHTML = `<div class="result-sub">ポケモンと技を選ぶと計算されます</div>`;
+    $("result-mini").textContent = "未計算";
     return;
   }
 
@@ -443,6 +463,9 @@ function recalc() {
       : $("def-status").value === "どく" || $("def-status").value === "もうどく"
         ? $("def-status").value
         : null,
+    disguiseBroken: $("disguiseBroken").checked,
+    hpNotFull: $("hpNotFull").checked,
+    movingLast: $("movingLast").checked,
   });
 
   if (result.error) {
@@ -450,6 +473,7 @@ function recalc() {
       <details class="calc-details"><summary>計算詳細</summary><ul>${(result.details || [])
         .map((d) => `<li>${d}</li>`)
         .join("")}</ul></details>`;
+    $("result-mini").textContent = result.error;
     return;
   }
 
@@ -461,7 +485,11 @@ function recalc() {
   const main = result.koChance != null && !result.koGuaranteed
     ? `${result.percentMin}％～${result.percentMax}％　${result.koText}`
     : `${result.percentMin}％～${result.percentMax}％　${result.koText}`;
-  const sub = `${result.min}～${result.max} ダメージ / 相手HP ${result.defenderHp}`;
+  const sub = `${result.min}～${result.max} ダメージ / 相手HP ${result.defenderHp}${
+    result.typeMult === 0 && /化け/.test(result.effectiveness || "")
+      ? "（1発目は化けの皮で無効 → KOは2発目以降）"
+      : ""
+  }`;
   const chanceLine =
     result.koChance != null
       ? `<div class="result-sub">${
@@ -493,6 +521,7 @@ function recalc() {
       <p class="result-sub">乱数一覧: ${result.rolls.join(", ")}</p>
     </details>
   `;
+  $("result-mini").textContent = main;
 }
 
 function wire() {
@@ -531,6 +560,9 @@ function wire() {
     "gravity",
     "helpBoost",
     "spikes",
+    "disguiseBroken",
+    "hpNotFull",
+    "movingLast",
   ].forEach((id) => {
     $(id).addEventListener("change", recalc);
   });

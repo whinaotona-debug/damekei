@@ -1,5 +1,16 @@
 import { typeEffectiveness, effectivenessLabel } from "./types.js";
 import { applyRank, calcAllStats } from "./stats.js";
+import {
+  isProteanLike,
+  effectiveWeatherForAttacker,
+  modifyAttackPower,
+  stabMultiplier,
+  modifyDefensiveDamage,
+  seDamageMod,
+  criticalBlocked,
+  criticalMultiplier,
+  ignoresAbility,
+} from "./abilities.js";
 
 const LEVEL = 50;
 
@@ -79,11 +90,12 @@ function getHitCount(move) {
 
 function resolveMoveType(move, weather, field, attacker) {
   let type = move.type;
+  const w = effectiveWeatherForAttacker(weather, attacker.ability);
   if (move.name === "ウェザーボール") {
-    if (weather === "はれ") type = "ほのお";
-    else if (weather === "あめ") type = "みず";
-    else if (weather === "ゆき") type = "こおり";
-    else if (weather === "すなあらし") type = "いわ";
+    if (w === "はれ") type = "ほのお";
+    else if (w === "あめ") type = "みず";
+    else if (w === "ゆき") type = "こおり";
+    else if (w === "すなあらし") type = "いわ";
   }
   if (move.name === "だいちのはどう" && field && field !== "なし") {
     const map = {
@@ -161,9 +173,12 @@ function resolvePower(move, ctx) {
     const stages = Object.values(attacker.ranks || {}).reduce((s, v) => s + Math.max(0, v), 0);
     power = 20 + 20 * stages;
   }
-  // ウェザーボール
-  if (move.name === "ウェザーボール" && weather && weather !== "なし") {
-    power = (power || 50) * 2;
+  // ウェザーボール（メガソーラーなら常に晴れ扱い → 威力2倍）
+  {
+    const w = effectiveWeatherForAttacker(weather, attacker.ability);
+    if (move.name === "ウェザーボール" && w && w !== "なし") {
+      power = (power || 50) * 2;
+    }
   }
   // だいちのはどう
   if (move.name === "だいちのはどう" && field && field !== "なし") {
@@ -175,9 +190,12 @@ function resolvePower(move, ctx) {
   if (move.name === "ワイドフォース" && field === "サイコフィールド") power = pokeRound((power || 80) * 1.5);
   if (move.name === "Gのちから" && ctx.gravity) power = pokeRound((power || 90) * 1.5);
 
-  // ソーラービーム等 天気半減
-  if (["ソーラービーム", "ソーラーブレード"].includes(move.name) && weather && weather !== "なし" && weather !== "はれ") {
-    power = pokeRound((power || 120) * 0.5);
+  // ソーラービーム等: メガソーラーなら半減しない。晴れ以外の実天候では半減
+  if (["ソーラービーム", "ソーラーブレード"].includes(move.name)) {
+    const w = effectiveWeatherForAttacker(weather, attacker.ability);
+    if (w !== "はれ") {
+      power = pokeRound((power || 120) * 0.5);
+    }
   }
   // じしん グラスフィールド
   if (["じしん", "じならし"].includes(move.name) && field === "グラスフィールド") {
@@ -338,6 +356,10 @@ export function calculateDamage(input) {
     gravity = false,
     helpBoost = false,
     metronome = 1,
+    disguiseBroken = false,
+    hpNotFull = false,
+    movingLast = false,
+    attackerHpRatio = 1,
   } = input;
 
   const details = [];
@@ -373,14 +395,34 @@ export function calculateDamage(input) {
     weather,
   };
 
-  const moveType = resolveMoveType(move, weather, field, attacker);
+  let moveType = resolveMoveType(move, weather, field, attacker);
   const hits = getHitCount(move);
 
-  // へんげんじざい / リベロ: 技タイプに変化してからダメージ → STAB
-  const proteanLike = ["へんげんじざい", "リベロ"].includes(attackerAbility);
+  // スキン系
+  {
+    const skinMod = modifyAttackPower({
+      power: move.power || 0,
+      attackStat: 1,
+      move,
+      moveType,
+      attackerAbility,
+      weather: effectiveWeatherForAttacker(weather, attackerAbility),
+      hpRatio: attackerHpRatio,
+    });
+    if (skinMod.typeOverride) {
+      moveType = skinMod.typeOverride;
+      details.push(`特性でタイプ変化: ${moveType}`);
+    }
+  }
+
+  // へんげんじざい / リベロ
+  const proteanLike = isProteanLike(attackerAbility);
   if (proteanLike && moveType) {
     attacker.types = [moveType];
     details.push(`特性 ${attackerAbility}: タイプが「${moveType}」に変化`);
+  }
+  if (attackerAbility === "メガソーラー") {
+    details.push("特性 メガソーラー: 技使用時のみ晴れ扱い");
   }
 
   details.push(`攻撃側: ${attacker.name} / 防御側: ${defender.name}`);
@@ -448,20 +490,33 @@ export function calculateDamage(input) {
     details.push("てだすけ: 威力×1.5");
   }
 
-  // 特性（攻撃側）ざっくり
-  if (attackerAbility === "てきおうりょく" && attacker.types.includes(moveType)) {
-    // STAB later 2.0
-  }
-  if (["てつのこぶし"].includes(attackerAbility) && move.punch) {
-    power = pokeRound(power * 1.2);
-    details.push("てつのこぶし: 威力×1.2");
-  }
-  if (attackerAbility === "かたいツメ" && move.contact) {
-    power = pokeRound(power * 1.3);
-    details.push("かたいツメ: 威力×1.3");
-  }
-  if (attackerAbility === "すてみ" && textHas(move, "自分も受ける", "反動")) {
-    power = pokeRound(power * 1.2);
+  // 特性による威力・攻撃補正
+  {
+    const atkCat = move.category === "物理" ? "atk" : "spa";
+    // 仮に攻撃実数値を後で再取得するため、ここでは威力のみ先に
+    const mod = modifyAttackPower({
+      power,
+      attackStat: 100, // placeholder, applied later on A
+      move,
+      moveType,
+      attackerAbility,
+      weather: effectiveWeatherForAttacker(weather, attackerAbility),
+      hpRatio: attackerHpRatio,
+    });
+    power = mod.power;
+    if (mod.typeOverride) {
+      moveType = mod.typeOverride;
+      details.push(`特性スキン: タイプが${moveType}に変化`);
+    }
+    mod.notes.forEach((n) => details.push(n));
+    if (attackerAbility === "アナライズ" && movingLast) {
+      power = pokeRound(power * 1.3);
+      details.push("アナライズ: 威力×1.3（後攻）");
+    }
+    if (attackerAbility === "ちからずく") {
+      power = pokeRound(power * 1.3);
+      details.push("ちからずく: 威力×1.3");
+    }
   }
 
   details.push(`技威力: ${power}`);
@@ -503,97 +558,109 @@ export function calculateDamage(input) {
     details.push("たつじんのおび: 威力×1.2");
   }
 
-  const isCrit = critical || textHas(move, "必ず急所") || ["こおりのいぶき", "やまあらし", "トリックフラワー"].includes(move.name);
-  if (isCrit) details.push("急所: あり（能力ランク不利無視 / ×1.5）");
-
-  const stamina = defenderAbility === "じきゅうりょく";
-  if (stamina) {
-    details.push("防御側 じきゅうりょく: ダメージを受けるたびに防御+1（2発目以降の計算に反映）");
+  let isCrit = critical || textHas(move, "必ず急所") || ["こおりのいぶき", "やまあらし", "トリックフラワー"].includes(move.name);
+  if (criticalBlocked(defenderAbility, ignoresAbility(attackerAbility), attackerAbility)) {
+    isCrit = false;
   }
+  if (isCrit) details.push("急所: あり");
 
-  // 壁
+  const stamina = defenderAbility === "じきゅうりょく" && !ignoresAbility(attackerAbility);
+  if (stamina) details.push("防御側 じきゅうりょく: 被弾ごとに防御+1（2発目以降に反映）");
+
+  const atkWeather = effectiveWeatherForAttacker(weather, attackerAbility);
   const wallActive =
     (move.category === "物理" && (screens.reflect || screens.auroraVeil)) ||
     (move.category === "特殊" && (screens.lightScreen || screens.auroraVeil));
+  const ignoreRanks =
+    (!ignoresAbility(attackerAbility) && defenderAbility === "てんねん") ||
+    textHas(move, "能力変化を無視") ||
+    ["DDラリアット", "せいなるつるぎ"].includes(move.name);
 
-  function damageAt(defRankBonus, hitPower, rollIndex) {
+  function emptyRankObj() {
+    return { atk: 0, def: 0, spa: 0, spd: 0, spe: 0, accuracy: 0, evasion: 0 };
+  }
+
+  function damageAt(defRankBonus, hitPower, rollIndex, opts = {}) {
+    const { firstHitOfBattle = true } = opts;
     const defRanksAdj = {
       ...defender.ranks,
       def: Math.min(6, (defender.ranks.def || 0) + defRankBonus),
       spd: defender.ranks.spd || 0,
     };
-    const { a, d, atkName, defName } = getAttackDefense(
+    const defMod = modifyDefensiveDamage({
+      mult: 1,
+      move,
+      moveType,
+      defenderAbility,
+      attackerAbility,
+      defenderTypes: defender.types,
+      weather: atkWeather,
+      hpFull: !hpNotFull,
+      disguiseIntact: !disguiseBroken && firstHitOfBattle,
+      moldBreak: ignoresAbility(attackerAbility),
+    });
+    if (defMod.blockHit || defMod.immune) {
+      return { damage: 0, a: 0, d: 0, atkName: "-", defName: "-", stab: 1, notes: defMod.notes, blocked: true };
+    }
+
+    const { a: a0, d, atkName, defName } = getAttackDefense(
       { ...move, type: moveType },
-      { ...attacker, weather },
-      { ...defender, ranks: defRanksAdj, weather },
+      { ...attacker, weather: atkWeather },
+      { ...defender, ranks: ignoreRanks ? emptyRankObj() : defRanksAdj, weather: atkWeather },
       isCrit
     );
-
+    const atkMod = modifyAttackPower({
+      power: hitPower,
+      attackStat: a0,
+      move,
+      moveType,
+      attackerAbility,
+      weather: atkWeather,
+      hpRatio: attackerHpRatio,
+    });
+    const a = atkMod.attackStat;
     let dmg = baseDamage(hitPower, a, d);
-
-    if (weather === "はれ") {
+    if (atkWeather === "はれ") {
       if (moveType === "ほのお") dmg = chainMod(dmg, 1.5);
       if (moveType === "みず") dmg = chainMod(dmg, 0.5);
-    }
-    if (weather === "あめ") {
+    } else if (atkWeather === "あめ") {
       if (moveType === "みず") dmg = chainMod(dmg, 1.5);
       if (moveType === "ほのお") dmg = chainMod(dmg, 0.5);
     }
-    if (isCrit) dmg = chainMod(dmg, 1.5);
-
-    let stab = 1;
-    if (attacker.types.includes(moveType)) {
-      stab = attackerAbility === "てきおうりょく" ? 2 : 1.5;
-    }
-
-    const rolled = pokeRound((dmg * (85 + rollIndex)) / 100);
-    let x = rolled;
+    if (isCrit) dmg = chainMod(dmg, criticalMultiplier(attackerAbility));
+    const stab = stabMultiplier(attacker.types, moveType, attackerAbility);
+    let x = pokeRound((dmg * (85 + rollIndex)) / 100);
     x = chainMod(x, stab);
     x = chainMod(x, typeMult);
-
-    if (
-      attackerStatus === "やけど" &&
-      move.category === "物理" &&
-      move.name !== "からげんき" &&
-      attackerAbility !== "こんじょう"
-    ) {
+    const seMod = seDamageMod(typeMult, defenderAbility, ignoresAbility(attackerAbility), attackerAbility);
+    if (seMod !== 1) x = chainMod(x, seMod);
+    x = chainMod(x, defMod.mult);
+    if (attackerStatus === "やけど" && move.category === "物理" && move.name !== "からげんき" && attackerAbility !== "こんじょう") {
       x = chainMod(x, 0.5);
     }
-    if (wallActive && !isCrit) {
-      x = pokeRound((x * 2) / 3);
-    }
+    if (wallActive && !isCrit && defenderAbility !== "すりぬけ") x = pokeRound((x * 2) / 3);
     const berry = RESIST_BERRIES[defenderItem];
-    if (berry && berry === moveType && typeMult > 1) {
-      x = chainMod(x, 0.5);
-    }
-    if (defenderItem === "ホズのみ" && moveType === "ノーマル") {
-      x = chainMod(x, 0.5);
-    }
-    if (defenderAbility === "あついしぼう" && (moveType === "ほのお" || moveType === "こおり")) {
-      x = chainMod(x, 0.5);
-    }
-    return {
-      damage: Math.max(1, x),
-      a,
-      d,
-      atkName,
-      defName,
-      stab,
-    };
+    if (berry && berry === moveType && typeMult > 1) x = chainMod(x, 0.5);
+    if (defenderItem === "ホズのみ" && moveType === "ノーマル") x = chainMod(x, 0.5);
+    return { damage: Math.max(1, x), a, d, atkName, defName, stab, notes: [...defMod.notes, ...atkMod.notes], blocked: false };
   }
 
-  // 1回の技使用（連続ヒット含む）の16乱数
-  function rollsForMoveUse(startingStaminaStacks) {
+  function rollsForMoveUse(startingStaminaStacks, disguiseAlreadyBroken = disguiseBroken) {
     const out = [];
     for (let rollIndex = 0; rollIndex <= 15; rollIndex++) {
       let sum = 0;
       let stacks = startingStaminaStacks;
-      const hitCount = hits.max;
-      for (let i = 0; i < hitCount; i++) {
+      let broken = disguiseAlreadyBroken;
+      for (let i = 0; i < hits.max; i++) {
         const hpwr = hits.powers ? hits.powers[i] : power;
-        const bonus = stamina ? stacks : 0;
-        sum += damageAt(bonus, hpwr, rollIndex).damage;
-        if (stamina) stacks = Math.min(6, stacks + 1);
+        const r = damageAt(stamina ? stacks : 0, hpwr, rollIndex, { firstHitOfBattle: !broken });
+        if (r.blocked && defenderAbility === "ばけのかわ" && !broken) {
+          broken = true;
+          sum += 0;
+        } else {
+          sum += r.damage;
+          if (stamina && !r.blocked) stacks = Math.min(6, stacks + 1);
+        }
       }
       out.push(sum);
     }
@@ -601,50 +668,45 @@ export function calculateDamage(input) {
   }
 
   const rolls = rollsForMoveUse(0);
-  const minDmg = rolls[0];
-  const maxDmg = rolls[15];
-
-  const sample = damageAt(0, hits.powers ? hits.powers[0] : power, 15);
+  const minDmg = Math.min(...rolls);
+  const maxDmg = Math.max(...rolls);
+  const sample = damageAt(0, hits.powers ? hits.powers[0] : power, 15, { firstHitOfBattle: !disguiseBroken });
   details.push(`攻撃側能力(${sample.atkName}): ${sample.a} / 防御側能力(${sample.defName}): ${sample.d}`);
   details.push(`STAB: ×${sample.stab}${proteanLike ? `（${attackerAbility}後）` : ""}`);
-  details.push(`天候: ${weather} / フィールド: ${field}`);
+  (sample.notes || []).forEach((n) => { if (!details.includes(n)) details.push(n); });
+  details.push(`天候: ${weather}${attackerAbility === "メガソーラー" ? "（攻撃側は晴れ扱い）" : ""} / フィールド: ${field}`);
   if (wallActive) details.push("壁: あり（×2/3）");
   if (attackerItem === "こだわりハチマキ") details.push("こだわりハチマキ: 攻撃×1.5");
   if (attackerItem === "こだわりメガネ") details.push("こだわりメガネ: 特攻×1.5");
-  details.push(`乱数: 0.85〜1.00`);
+  details.push("乱数: 0.85〜1.00");
   details.push(`最低ダメージ: ${minDmg} / 最高ダメージ: ${maxDmg}`);
   if (hits.max > 1) details.push(`連続攻撃: ${hits.min}〜${hits.max}回（表示は${hits.max}回命中想定）`);
 
   const hp = defStats.hp;
   const percentMin = Math.floor((minDmg / hp) * 1000) / 10;
   const percentMax = Math.floor((maxDmg / hp) * 1000) / 10;
-
-  // 連続ターンKO確率（じきゅうりょくはターンごとに防御上昇）
   const koInfo = analyzeKoChance({
     hp,
     stamina,
-    rollsForMoveUse,
+    rollsForMoveUse: (stacks, turnIndex = 0) =>
+      rollsForMoveUse(stacks, disguiseBroken || turnIndex > 0),
     maxTurns: 8,
   });
-  const ko = koInfo.text;
-  details.push(`KO判定: ${ko}${koInfo.chance != null ? `（倒せる乱数 ${koInfo.chance}%）` : ""}`);
+  details.push(`KO判定: ${koInfo.text}${koInfo.chance != null ? `（倒せる乱数 ${koInfo.chance}%）` : ""}`);
   if (stamina && koInfo.note) details.push(koInfo.note);
-
-  // 追加ダメージ情報
   const chip = chipDamage(defender, defStats.hp, weather, field, screens, input);
-
   return {
     min: minDmg,
     max: maxDmg,
     rolls,
     percentMin,
     percentMax,
-    koText: ko,
+    koText: koInfo.text,
     koChance: koInfo.chance,
     koHits: koInfo.hits,
     koGuaranteed: koInfo.guaranteed,
-    effectiveness: effectivenessLabel(typeMult),
-    typeMult,
+    effectiveness: sample.blocked ? "化けの皮等で無効" : effectivenessLabel(typeMult),
+    typeMult: sample.blocked ? 0 : typeMult,
     details,
     defenderHp: hp,
     moveType,
@@ -689,7 +751,8 @@ function analyzeKoChance({ hp, stamina, rollsForMoveUse, maxTurns = 8 }) {
     const stacks = stamina ? Math.min(6, t) : 0;
     // 連続ヒット技は1回の技使用内でも stacks が増えるが、
     // ターンまたぎは「前ターンで受けた回数」≈1技使用分として t を使う
-    turnRolls.push(rollsForMoveUse(stacks));
+    // 第2引数にターン番号（ばけのかわ破れ判定用）
+    turnRolls.push(rollsForMoveUse(stacks, t));
   }
 
   // 1発目の min/max でラベル用
