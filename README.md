@@ -10,7 +10,13 @@
 
 ## 使い方（スマホ）
 
-GitHub Pages で公開した URL をブラウザで開いてください。
+GitHub Pages:
+
+**https://whinaotona-debug.github.io/damekei/**
+
+リポジトリ: https://github.com/whinaotona-debug/damekei
+
+※初回は Pages の反映に1〜2分かかることがあります。
 
 ## ローカル
 
