@@ -687,26 +687,8 @@ export function calculateDamage(input) {
     const max = Math.max(0, rawMax - healPerTurn);
     const percentMin = Math.floor((min / hp) * 1000) / 10;
     const percentMax = Math.floor((max / hp) * 1000) / 10;
-    const displayRolls = rawRolls.map((r) => Math.max(0, r - healPerTurn));
-    // メインの確定数は1発ダメージ基準（回復込み表示と一致）。じきゅうりょくは別注記。
-    const simple = koText(min, max, hp);
-    const hitsMatch = simple.match(/(\d+)発/);
-    const hitsN = hitsMatch ? Number(hitsMatch[1]) : null;
-    let koChance = null;
-    let guaranteed = /^確定/.test(simple);
-    if (hitsN && hitsN <= 4) {
-      const turnRolls = Array.from({ length: hitsN }, () => displayRolls);
-      const info = koChanceInNTurns(turnRolls, hp, hitsN);
-      koChance = Math.round(info.chance * 1000) / 10;
-      guaranteed = info.guaranteed;
-    } else if (guaranteed) {
-      koChance = 100;
-    }
-    const koLabel = guaranteed
-      ? `確定${hitsN}発`
-      : hitsN
-        ? `乱数${hitsN}発${koChance != null ? `（${koChance}%）` : ""}`
-        : simple;
+    // KOは生ダメージ＋ターン間回復で、倒せる最速の発数を表示（参考ダメ計と同じ）
+    const ko = analyzeKoWithHeal(rawRolls, hp, healPerTurn, 8);
     return {
       label,
       rawMin,
@@ -716,10 +698,10 @@ export function calculateDamage(input) {
       rolls: rawRolls,
       percentMin,
       percentMax,
-      koText: koLabel,
-      koChance,
-      koHits: hitsN,
-      koGuaranteed: guaranteed,
+      koText: ko.text,
+      koChance: ko.chance,
+      koHits: ko.hits,
+      koGuaranteed: ko.guaranteed,
       healPerTurn,
     };
   }
@@ -777,7 +759,7 @@ export function calculateDamage(input) {
   }
 
   const primary = wantCritOnly && critPack ? critPack : normalPack || critPack;
-  details.push(`KO判定（表示ダメージ基準）: ${primary.koText}`);
+  details.push(`KO判定（生ダメージ＋回復・最速発数）: ${primary.koText}`);
 
   const chip = chipDamage(defender, defStats.hp, weather, field, screens, input);
   return {
@@ -821,6 +803,83 @@ function endOfTurnHealAmount(defender, maxHp) {
     heal += Math.floor(maxHp / 16);
   }
   return heal;
+}
+
+/**
+ * 生ダメージ乱数とターン間回復から、倒せる最速発数の確定/乱数を求める。
+ * （表示％は回復差し引きでも、KO判定は生ダメージ＋回復で行う）
+ */
+function analyzeKoWithHeal(rawRolls, hp, healPerTurn, maxTurns = 8) {
+  for (let n = 1; n <= maxTurns; n++) {
+    const { chance, guaranteed, possible } = koChanceWithHeal(rawRolls, hp, healPerTurn, n);
+    if (!possible) continue;
+    if (guaranteed) {
+      return { text: `確定${n}発`, chance: 100, hits: n, guaranteed: true };
+    }
+    return {
+      text: `乱数${n}発 ${formatKoChance(chance)}%`,
+      chance: formatKoChance(chance),
+      hits: n,
+      guaranteed: false,
+    };
+  }
+  return { text: "ダメージ不足", chance: null, hits: null, guaranteed: false };
+}
+
+function formatKoChance(chance01) {
+  const pct = chance01 * 100;
+  if (pct < 1) return Math.round(pct * 100) / 100; // 0.39
+  return Math.round(pct * 10) / 10; // 21.6
+}
+
+/** n発（同一乱数分布・ターン間に heal）で倒せる割合 */
+function koChanceWithHeal(rawRolls, hp, healPerTurn, n) {
+  if (n <= 5) {
+    let ko = 0;
+    let total = 0;
+    function rec(turn, hpLeft) {
+      if (turn === n) {
+        total += 1;
+        if (hpLeft <= 0) ko += 1;
+        return;
+      }
+      for (let i = 0; i < rawRolls.length; i++) {
+        let h = hpLeft - rawRolls[i];
+        if (h <= 0) {
+          const rest = rawRolls.length ** (n - turn - 1);
+          ko += rest;
+          total += rest;
+        } else {
+          if (healPerTurn > 0 && turn < n - 1) {
+            h = Math.min(hp, h + healPerTurn);
+          }
+          rec(turn + 1, h);
+        }
+      }
+    }
+    rec(0, hp);
+    const chance = total === 0 ? 0 : ko / total;
+    return {
+      chance,
+      guaranteed: ko === total && total > 0,
+      possible: ko > 0,
+    };
+  }
+
+  // nが大きいときは min/max 近似
+  let hAfterMin = hp;
+  let hAfterMax = hp;
+  for (let t = 0; t < n; t++) {
+    hAfterMin -= rawRolls[rawRolls.length - 1];
+    hAfterMax -= rawRolls[0];
+    if (t < n - 1 && healPerTurn > 0) {
+      if (hAfterMin > 0) hAfterMin = Math.min(hp, hAfterMin + healPerTurn);
+      if (hAfterMax > 0) hAfterMax = Math.min(hp, hAfterMax + healPerTurn);
+    }
+  }
+  if (hAfterMax <= 0) return { chance: 1, guaranteed: true, possible: true };
+  if (hAfterMin > 0) return { chance: 0, guaranteed: false, possible: false };
+  return { chance: 0.5, guaranteed: false, possible: true };
 }
 
 function finalizeFixed(dmg, hp, moveType, defTypes, details, move, note) {

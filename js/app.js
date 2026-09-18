@@ -614,15 +614,16 @@ function recalc() {
     const healNote =
       pack.healPerTurn > 0
         ? `<span class="result-heal">${pack.label} ${pack.healPerTurn} 回復</span>`
-        : "";
+        : `<span class="result-heal">${pack.label}</span>`;
     const barPct = Math.min(100, pack.percentMax);
     const barMin = Math.min(100, pack.percentMin);
+    const koClass = pack.koGuaranteed ? "ko-sure" : "ko-rand";
     return `
       <div class="dmg-row ${tone}">
         <div class="dmg-row-main">
           <span class="dmg-pct">${pack.percentMin} ~ ${pack.percentMax}%</span>
           <span class="dmg-abs">(${pack.min} ~ ${pack.max})</span>
-          <span class="dmg-ko">${pack.koText}</span>
+          <span class="dmg-ko ${koClass}">${pack.koText}</span>
         </div>
         <div class="dmg-bar" aria-hidden="true">
           <i style="left:0;width:${barPct}%"></i>
