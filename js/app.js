@@ -458,8 +458,18 @@ function recalc() {
   else if (result.typeMult > 1) effClass = "";
   else if (result.typeMult < 1) effClass = "resist";
 
-  const main = `${result.percentMin}％～${result.percentMax}％　${result.koText}`;
+  const main = result.koChance != null && !result.koGuaranteed
+    ? `${result.percentMin}％～${result.percentMax}％　${result.koText}`
+    : `${result.percentMin}％～${result.percentMax}％　${result.koText}`;
   const sub = `${result.min}～${result.max} ダメージ / 相手HP ${result.defenderHp}`;
+  const chanceLine =
+    result.koChance != null
+      ? `<div class="result-sub">${
+          result.koGuaranteed
+            ? `${result.koHits}発で確定（100%）`
+            : `${result.koHits}発で倒せる乱数: ${result.koChance}%（16通り×組み合わせ）`
+        }</div>`
+      : "";
 
   const chipHtml = (result.chip || []).length
     ? `<ul class="chip-list">${result.chip
@@ -474,6 +484,7 @@ function recalc() {
     <div class="result-sub">${state.atk.name} の ${state.move.name} → ${state.def.name}</div>
     <div class="result-main">${main}</div>
     <div class="result-sub">${sub}</div>
+    ${chanceLine}
     <div class="result-eff ${effClass}">${result.effectiveness}</div>
     ${chipHtml}
     <details class="calc-details">

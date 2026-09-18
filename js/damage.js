@@ -279,7 +279,19 @@ function getAttackDefense(move, attacker, defender, critical) {
   if (attacker.item === "でんきだま" && attacker.name === "ピカチュウ") {
     if (atkName.includes("攻撃") || atkName.includes("特攻")) a = pokeRound(a * 2);
   }
-  // こだわりハチマキ相当なし — スカーフは素早さのみ
+  // こだわりハチマキ（物理の攻撃ステで計算する技のみ）
+  if (
+    attacker.item === "こだわりハチマキ" &&
+    cat === "物理" &&
+    move.name !== "ボディプレス" &&
+    move.name !== "イカサマ"
+  ) {
+    a = pokeRound(a * 1.5);
+  }
+  // こだわりメガネ
+  if (attacker.item === "こだわりメガネ" && cat === "特殊") {
+    a = pokeRound(a * 1.5);
+  }
 
   return { a, d, atkName, defName, atkStat, defStat, atkRank, defRank };
 }
@@ -341,9 +353,9 @@ export function calculateDamage(input) {
 
   const attacker = {
     name: attackerPoke.name,
-    types: attackerPoke.types,
+    types: [...attackerPoke.types],
     stats: atkStats,
-    ranks: attackerRanks,
+    ranks: { ...attackerRanks },
     item: attackerItem,
     ability: attackerAbility,
     status: attackerStatus,
@@ -354,7 +366,7 @@ export function calculateDamage(input) {
     name: defenderPoke.name,
     types: defenderPoke.types,
     stats: defStats,
-    ranks: defenderRanks,
+    ranks: { ...defenderRanks },
     item: defenderItem,
     ability: defenderAbility,
     status: defenderStatus,
@@ -363,6 +375,13 @@ export function calculateDamage(input) {
 
   const moveType = resolveMoveType(move, weather, field, attacker);
   const hits = getHitCount(move);
+
+  // へんげんじざい / リベロ: 技タイプに変化してからダメージ → STAB
+  const proteanLike = ["へんげんじざい", "リベロ"].includes(attackerAbility);
+  if (proteanLike && moveType) {
+    attacker.types = [moveType];
+    details.push(`特性 ${attackerAbility}: タイプが「${moveType}」に変化`);
+  }
 
   details.push(`攻撃側: ${attacker.name} / 防御側: ${defender.name}`);
   details.push(`レベル: ${LEVEL}`);
@@ -487,19 +506,31 @@ export function calculateDamage(input) {
   const isCrit = critical || textHas(move, "必ず急所") || ["こおりのいぶき", "やまあらし", "トリックフラワー"].includes(move.name);
   if (isCrit) details.push("急所: あり（能力ランク不利無視 / ×1.5）");
 
-  const { a, d, atkName, defName } = getAttackDefense(
-    { ...move, type: moveType },
-    { ...attacker, weather },
-    { ...defender, weather },
-    isCrit
-  );
-  details.push(`攻撃側能力(${atkName}): ${a} / 防御側能力(${defName}): ${d}`);
+  const stamina = defenderAbility === "じきゅうりょく";
+  if (stamina) {
+    details.push("防御側 じきゅうりょく: ダメージを受けるたびに防御+1（2発目以降の計算に反映）");
+  }
 
-  // 1ヒット分の基本ダメージ
-  function oneHitDamage(hitPower) {
+  // 壁
+  const wallActive =
+    (move.category === "物理" && (screens.reflect || screens.auroraVeil)) ||
+    (move.category === "特殊" && (screens.lightScreen || screens.auroraVeil));
+
+  function damageAt(defRankBonus, hitPower, rollIndex) {
+    const defRanksAdj = {
+      ...defender.ranks,
+      def: Math.min(6, (defender.ranks.def || 0) + defRankBonus),
+      spd: defender.ranks.spd || 0,
+    };
+    const { a, d, atkName, defName } = getAttackDefense(
+      { ...move, type: moveType },
+      { ...attacker, weather },
+      { ...defender, ranks: defRanksAdj, weather },
+      isCrit
+    );
+
     let dmg = baseDamage(hitPower, a, d);
 
-    // 天候
     if (weather === "はれ") {
       if (moveType === "ほのお") dmg = chainMod(dmg, 1.5);
       if (moveType === "みず") dmg = chainMod(dmg, 0.5);
@@ -508,33 +539,18 @@ export function calculateDamage(input) {
       if (moveType === "みず") dmg = chainMod(dmg, 1.5);
       if (moveType === "ほのお") dmg = chainMod(dmg, 0.5);
     }
-
-    // 急所
     if (isCrit) dmg = chainMod(dmg, 1.5);
 
-    // 乱数は後で
-
-    // STAB
     let stab = 1;
     if (attacker.types.includes(moveType)) {
       stab = attackerAbility === "てきおうりょく" ? 2 : 1.5;
     }
-    // STAB applied after random in official — we apply after generating rolls base
 
-    return { base: dmg, stab };
-  }
-
-  // 壁
-  const wallActive =
-    (move.category === "物理" && (screens.reflect || screens.auroraVeil)) ||
-    (move.category === "特殊" && (screens.lightScreen || screens.auroraVeil));
-
-  function applyAfterRandom(dmg, stab) {
-    let x = dmg;
+    const rolled = pokeRound((dmg * (85 + rollIndex)) / 100);
+    let x = rolled;
     x = chainMod(x, stab);
     x = chainMod(x, typeMult);
 
-    // やけど（物理）— からげんきは無視
     if (
       attackerStatus === "やけど" &&
       move.category === "物理" &&
@@ -543,13 +559,9 @@ export function calculateDamage(input) {
     ) {
       x = chainMod(x, 0.5);
     }
-
-    // 壁（急所で無効）
     if (wallActive && !isCrit) {
       x = pokeRound((x * 2) / 3);
     }
-
-    // 半減きのみ
     const berry = RESIST_BERRIES[defenderItem];
     if (berry && berry === moveType && typeMult > 1) {
       x = chainMod(x, 0.5);
@@ -557,61 +569,66 @@ export function calculateDamage(input) {
     if (defenderItem === "ホズのみ" && moveType === "ノーマル") {
       x = chainMod(x, 0.5);
     }
-
-    // 特性防御側
     if (defenderAbility === "あついしぼう" && (moveType === "ほのお" || moveType === "こおり")) {
       x = chainMod(x, 0.5);
     }
-    if (defenderAbility === "マルチスケイル" || defenderAbility === "マルチスケイル") {
-      // skip unless HP full — assume full
-      // x = chainMod(x, 0.5);
+    return {
+      damage: Math.max(1, x),
+      a,
+      d,
+      atkName,
+      defName,
+      stab,
+    };
+  }
+
+  // 1回の技使用（連続ヒット含む）の16乱数
+  function rollsForMoveUse(startingStaminaStacks) {
+    const out = [];
+    for (let rollIndex = 0; rollIndex <= 15; rollIndex++) {
+      let sum = 0;
+      let stacks = startingStaminaStacks;
+      const hitCount = hits.max;
+      for (let i = 0; i < hitCount; i++) {
+        const hpwr = hits.powers ? hits.powers[i] : power;
+        const bonus = stamina ? stacks : 0;
+        sum += damageAt(bonus, hpwr, rollIndex).damage;
+        if (stamina) stacks = Math.min(6, stacks + 1);
+      }
+      out.push(sum);
     }
-
-    return Math.max(1, x);
+    return out;
   }
 
-  // 連続ヒット集計
-  const hitPowers = [];
-  if (hits.powers) {
-    hitPowers.push(...hits.powers);
-  } else {
-    for (let i = 0; i < hits.max; i++) hitPowers.push(power);
-  }
+  const rolls = rollsForMoveUse(0);
+  const minDmg = rolls[0];
+  const maxDmg = rolls[15];
 
-  // 最低ヒット・最高ヒットでの合計
-  function totalForHits(hitCount, rollIndex) {
-    // rollIndex 0..15 => 0.85+
-    let sum = 0;
-    for (let i = 0; i < hitCount; i++) {
-      const hpwr = hits.powers ? hits.powers[i] : power;
-      const { base, stab } = oneHitDamage(hpwr);
-      const rolled = pokeRound((base * (85 + rollIndex)) / 100);
-      sum += applyAfterRandom(rolled, stab);
-    }
-    return sum;
-  }
-
-  // 通常表示: 最大ヒット数想定の min-max（各ヒット同一乱数帯の合算）
-  // より正確: 全ヒットが最低乱数 / 最高乱数
-  const useHits = hits.max;
-  const minDmg = totalForHits(useHits, 0);
-  const maxDmg = totalForHits(useHits, 15);
-  const rolls = [];
-  for (let i = 0; i <= 15; i++) rolls.push(totalForHits(useHits, i));
-
-  // STAB表示用
-  let stab = attacker.types.includes(moveType) ? (attackerAbility === "てきおうりょく" ? 2 : 1.5) : 1;
-  details.push(`STAB: ×${stab}`);
+  const sample = damageAt(0, hits.powers ? hits.powers[0] : power, 15);
+  details.push(`攻撃側能力(${sample.atkName}): ${sample.a} / 防御側能力(${sample.defName}): ${sample.d}`);
+  details.push(`STAB: ×${sample.stab}${proteanLike ? `（${attackerAbility}後）` : ""}`);
   details.push(`天候: ${weather} / フィールド: ${field}`);
   if (wallActive) details.push("壁: あり（×2/3）");
+  if (attackerItem === "こだわりハチマキ") details.push("こだわりハチマキ: 攻撃×1.5");
+  if (attackerItem === "こだわりメガネ") details.push("こだわりメガネ: 特攻×1.5");
   details.push(`乱数: 0.85〜1.00`);
   details.push(`最低ダメージ: ${minDmg} / 最高ダメージ: ${maxDmg}`);
-  if (hits.max > 1) details.push(`連続攻撃: ${hits.min}〜${hits.max}回（表示は${useHits}回命中想定）`);
+  if (hits.max > 1) details.push(`連続攻撃: ${hits.min}〜${hits.max}回（表示は${hits.max}回命中想定）`);
 
   const hp = defStats.hp;
   const percentMin = Math.floor((minDmg / hp) * 1000) / 10;
   const percentMax = Math.floor((maxDmg / hp) * 1000) / 10;
-  const ko = koText(minDmg, maxDmg, hp);
+
+  // 連続ターンKO確率（じきゅうりょくはターンごとに防御上昇）
+  const koInfo = analyzeKoChance({
+    hp,
+    stamina,
+    rollsForMoveUse,
+    maxTurns: 8,
+  });
+  const ko = koInfo.text;
+  details.push(`KO判定: ${ko}${koInfo.chance != null ? `（倒せる乱数 ${koInfo.chance}%）` : ""}`);
+  if (stamina && koInfo.note) details.push(koInfo.note);
 
   // 追加ダメージ情報
   const chip = chipDamage(defender, defStats.hp, weather, field, screens, input);
@@ -623,12 +640,15 @@ export function calculateDamage(input) {
     percentMin,
     percentMax,
     koText: ko,
+    koChance: koInfo.chance,
+    koHits: koInfo.hits,
+    koGuaranteed: koInfo.guaranteed,
     effectiveness: effectivenessLabel(typeMult),
     typeMult,
     details,
     defenderHp: hp,
     moveType,
-    stab,
+    stab: sample.stab,
     power,
     hits,
     chip,
@@ -658,8 +678,92 @@ function finalizeFixed(dmg, hp, moveType, defTypes, details, move, note) {
   };
 }
 
+/**
+ * n発で倒せる確率を計算。
+ * じきゅうりょく時は 1発目 stacks=0, 2発目=1, ... と防御が上がる前提。
+ */
+function analyzeKoChance({ hp, stamina, rollsForMoveUse, maxTurns = 8 }) {
+  // 各ターン開始時の stamina stacks での 16 乱数
+  const turnRolls = [];
+  for (let t = 0; t < maxTurns; t++) {
+    const stacks = stamina ? Math.min(6, t) : 0;
+    // 連続ヒット技は1回の技使用内でも stacks が増えるが、
+    // ターンまたぎは「前ターンで受けた回数」≈1技使用分として t を使う
+    turnRolls.push(rollsForMoveUse(stacks));
+  }
+
+  // 1発目の min/max でラベル用
+  const firstMin = turnRolls[0][0];
+  const firstMax = turnRolls[0][15];
+
+  for (let n = 1; n <= maxTurns; n++) {
+    const { chance, guaranteed, possible } = koChanceInNTurns(turnRolls, hp, n);
+    if (!possible) continue;
+    if (guaranteed) {
+      return {
+        text: `確定${n}発`,
+        chance: 100,
+        hits: n,
+        guaranteed: true,
+        note: stamina && n > 1 ? `じきゅうりょく込み（${n}発目は防御+${n - 1}）` : null,
+      };
+    }
+    // この n で倒せる可能性がある最初の発数
+    const pct = Math.round(chance * 1000) / 10;
+    return {
+      text: `乱数${n}発（${pct}%）`,
+      chance: pct,
+      hits: n,
+      guaranteed: false,
+      note: stamina && n > 1 ? `じきゅうりょく込み（${n}発目は防御+${n - 1}）` : null,
+    };
+  }
+
+  // fallback
+  const label = koText(firstMin, firstMax, hp);
+  return { text: label, chance: null, hits: null, guaranteed: false, note: null };
+}
+
+/** n ターン分の乱数組み合わせで倒せる割合（各ターン16通り、独立） */
+function koChanceInNTurns(turnRolls, hp, n) {
+  // 再帰で全組み合わせは 16^n。n<=4 は 65536 まで許容、それ以上は近似
+  if (n <= 4) {
+    let ko = 0;
+    let total = 0;
+    function rec(turn, sum) {
+      if (turn === n) {
+        total += 1;
+        if (sum >= hp) ko += 1;
+        return;
+      }
+      for (let i = 0; i < 16; i++) {
+        rec(turn + 1, sum + turnRolls[turn][i]);
+      }
+    }
+    rec(0, 0);
+    const chance = ko / total;
+    return {
+      chance,
+      guaranteed: ko === total,
+      possible: ko > 0,
+    };
+  }
+
+  // 近似: 各ターンの期待値累積ではなく、モンテカルロ風に全最大/最小で判定
+  let minSum = 0;
+  let maxSum = 0;
+  for (let t = 0; t < n; t++) {
+    minSum += turnRolls[t][0];
+    maxSum += turnRolls[t][15];
+  }
+  if (minSum >= hp) return { chance: 1, guaranteed: true, possible: true };
+  if (maxSum < hp) return { chance: 0, guaranteed: false, possible: false };
+  // 粗い近似: 一様とみなして線形
+  const approx = (maxSum - hp) / (maxSum - minSum);
+  return { chance: Math.max(0, Math.min(1, approx)), guaranteed: false, possible: true };
+}
+
 export function koText(minDmg, maxDmg, hp) {
-  // 確定n発 / 乱数n発
   function hitsToKO(dmg) {
     if (dmg <= 0) return Infinity;
     return Math.ceil(hp / dmg);
@@ -668,14 +772,7 @@ export function koText(minDmg, maxDmg, hp) {
   const maxHits = hitsToKO(maxDmg);
 
   if (!isFinite(minHits)) return "ダメージなし";
-
-  // 最低でも n 発で倒せる → 確定n発
-  // 最高でも倒せず最低より多く必要 → 
-  // 例: minHits=2, maxHits=1 → 乱数1発（最高なら1、最低なら2）
-  if (minHits === maxHits) {
-    return `確定${minHits}発`;
-  }
-  // 最高ダメージでの必要発数（少ない方）が「乱数X発」
+  if (minHits === maxHits) return `確定${minHits}発`;
   return `乱数${maxHits}発`;
 }
 
