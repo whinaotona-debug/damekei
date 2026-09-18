@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#2f6f8f" />
+  <title>ダメ計 — ポケモンダメージ計算</title>
+  <link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <div>
+        <h1>ダメ計</h1>
+        <p>Lv50 / 個体値31固定・努力値・性格・特性・ランク対応</p>
+      </div>
+    </header>
+
+    <div class="row-2">
+      <section class="panel attack" id="panel-atk">
+        <h2>攻撃 <span class="side-tag">ATK</span></h2>
+        <div class="poke-slot" id="atk-slot" tabindex="0" role="button" aria-label="攻撃側ポケモンを選ぶ">
+          <span class="placeholder">ここにポケモン</span>
+        </div>
+        <div id="atk-detail" hidden></div>
+      </section>
+
+      <section class="panel defense" id="panel-def">
+        <h2>防御 <span class="side-tag">DEF</span></h2>
+        <div class="poke-slot" id="def-slot" tabindex="0" role="button" aria-label="防御側ポケモンを選ぶ">
+          <span class="placeholder">ここにポケモン</span>
+        </div>
+        <div id="def-detail" hidden></div>
+      </section>
+    </div>
+
+    <section class="panel">
+      <h2>使う技</h2>
+      <button type="button" class="selector-btn" id="move-btn">
+        <div class="title">技を選択</div>
+        <div class="sub">名前・タイプ・分類で検索</div>
+      </button>
+    </section>
+
+    <section class="panel">
+      <h2>攻撃側の持ち物</h2>
+      <button type="button" class="selector-btn" id="atk-item-btn">
+        <div class="title">なし</div>
+        <div class="sub">持ち物を選択</div>
+      </button>
+    </section>
+
+    <section class="panel">
+      <h2>防御側の持ち物</h2>
+      <button type="button" class="selector-btn" id="def-item-btn">
+        <div class="title">なし</div>
+        <div class="sub">持ち物を選択</div>
+      </button>
+    </section>
+
+    <section class="panel">
+      <h2>天候・フィールド・状態</h2>
+      <div class="field-grid">
+        <div class="ctrl-row">
+          <label for="weather">天候</label>
+          <select id="weather">
+            <option value="なし">なし</option>
+            <option value="はれ">にほんばれ</option>
+            <option value="あめ">あめ</option>
+            <option value="すなあらし">すなあらし</option>
+            <option value="ゆき">ゆき</option>
+          </select>
+        </div>
+        <div class="ctrl-row">
+          <label for="field">フィールド</label>
+          <select id="field">
+            <option value="なし">なし</option>
+            <option value="エレキフィールド">エレキフィールド</option>
+            <option value="グラスフィールド">グラスフィールド</option>
+            <option value="サイコフィールド">サイコフィールド</option>
+            <option value="ミストフィールド">ミストフィールド</option>
+          </select>
+        </div>
+        <div class="ctrl-row">
+          <label for="atk-status">攻撃側状態</label>
+          <select id="atk-status">
+            <option value="なし">なし</option>
+            <option value="やけど">やけど</option>
+            <option value="どく">どく</option>
+            <option value="もうどく">もうどく</option>
+            <option value="まひ">まひ</option>
+          </select>
+        </div>
+        <div class="ctrl-row">
+          <label for="def-status">防御側状態</label>
+          <select id="def-status">
+            <option value="なし">なし</option>
+            <option value="やけど">やけど</option>
+            <option value="どく">どく</option>
+            <option value="もうどく">もうどく</option>
+            <option value="まひ">まひ</option>
+          </select>
+        </div>
+      </div>
+      <div class="check-list" style="margin-top:10px">
+        <label><input type="checkbox" id="critical" /> 急所</label>
+        <label><input type="checkbox" id="reflect" /> リフレクター</label>
+        <label><input type="checkbox" id="lightScreen" /> ひかりのかべ</label>
+        <label><input type="checkbox" id="auroraVeil" /> オーロラベール</label>
+        <label><input type="checkbox" id="stealthRock" /> ステルスロック</label>
+        <label><input type="checkbox" id="leechSeed" /> やどりぎのタネ</label>
+        <label><input type="checkbox" id="burnChip" /> やけどダメージ表示</label>
+        <label><input type="checkbox" id="poisonChip" /> どくダメージ表示</label>
+        <label><input type="checkbox" id="gravity" /> じゅうりょく</label>
+        <label><input type="checkbox" id="helpBoost" /> てだすけ</label>
+      </div>
+      <div class="ctrl-row" style="margin-top:8px">
+        <label for="spikes">まきびし</label>
+        <select id="spikes">
+          <option value="0">なし</option>
+          <option value="1">1本</option>
+          <option value="2">2本</option>
+          <option value="3">3本</option>
+        </select>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>結果</h2>
+      <div class="result-box" id="result">
+        <div class="result-sub">ポケモンと技を選ぶと計算されます</div>
+      </div>
+    </section>
+  </div>
+
+  <div class="modal" id="modal" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true">
+      <div class="modal-head">
+        <h3 id="modal-title">選択</h3>
+        <button type="button" class="icon-btn" id="modal-close">閉じる</button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+    </div>
+  </div>
+
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>
