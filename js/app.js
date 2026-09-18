@@ -1,4 +1,21 @@
-import { NATURES, STAT_KEYS, STAT_LABELS, calcAllStats, emptyEvs, emptyRanks, totalEv } from "./stats.js";
+import {
+  NATURES,
+  NATURE_TABLE,
+  NATURE_STAT_ORDER,
+  NEUTRAL_NATURES,
+  STAT_KEYS,
+  STAT_LABELS,
+  ATK_VISIBLE_STATS,
+  DEF_VISIBLE_STATS,
+  EV_MAX_PER,
+  EV_MAX_TOTAL,
+  calcAllStats,
+  emptyEvs,
+  emptyRanks,
+  totalEv,
+  clampEvAssign,
+  getNature,
+} from "./stats.js";
 import { TYPES } from "./types.js";
 import { calculateDamage } from "./damage.js";
 
@@ -54,6 +71,17 @@ function closeModal() {
   $("modal").setAttribute("aria-hidden", "true");
 }
 
+function natureArrow(stat, natureName) {
+  const n = getNature(natureName);
+  if (n.up === stat) return `<span class="arrow up" title="性格上昇">▲</span>`;
+  if (n.down === stat) return `<span class="arrow down" title="性格下降">▼</span>`;
+  return `<span class="arrow flat"></span>`;
+}
+
+function visibleStatsFor(side) {
+  return side === "atk" ? ATK_VISIBLE_STATS : DEF_VISIBLE_STATS;
+}
+
 function renderSlot(side) {
   const poke = state[side];
   const slot = $(`${side}-slot`);
@@ -73,6 +101,8 @@ function renderSlot(side) {
   const ranks = state[`${side}Ranks`];
   const base = poke.baseStats;
   const evSum = totalEv(evs);
+  const vis = visibleStatsFor(side);
+  const nInfo = getNature(nature);
 
   slot.classList.add("filled");
   slot.innerHTML = `
@@ -86,19 +116,30 @@ function renderSlot(side) {
   const abilityOptions = (poke.abilities || [])
     .map((a) => `<option value="${a}" ${a === ability ? "selected" : ""}>${a}</option>`)
     .join("");
-  const natureOptions = NATURES.map(
-    (n) => `<option value="${n.name}" ${n.name === nature ? "selected" : ""}>${n.name}</option>`
-  ).join("");
 
-  const evCells = STAT_KEYS.map(
-    (k) => `
+  const natureHint =
+    nInfo.up && nInfo.down
+      ? `<span class="nature-hint"><span class="up">▲${STAT_LABELS[nInfo.up]}</span> <span class="down">▼${STAT_LABELS[nInfo.down]}</span></span>`
+      : `<span class="nature-hint">補正なし</span>`;
+
+  const evCells = vis
+    .map(
+      (k) => `
     <div class="ev-cell">
       <label>${STAT_LABELS[k]}</label>
-      <input type="number" inputmode="numeric" min="0" max="252" step="4" data-ev="${k}" value="${evs[k]}" />
+      <div class="ev-controls">
+        <input type="number" inputmode="numeric" min="0" max="${EV_MAX_PER}" step="1" data-ev="${k}" value="${evs[k]}" />
+        <button type="button" class="ev-btn" data-ev-set="${k}" data-ev-val="0">0</button>
+        <button type="button" class="ev-btn primary32" data-ev-set="${k}" data-ev-val="32">32</button>
+      </div>
     </div>`
-  ).join("");
+    )
+    .join("");
 
-  const rankKeys = ["atk", "def", "spa", "spd", "spe", "accuracy", "evasion"];
+  const rankKeys =
+    side === "atk"
+      ? ["atk", "spa", "spe", "accuracy"]
+      : ["def", "spd", "spe", "evasion"];
   const rankLabels = { ...STAT_LABELS, accuracy: "命中", evasion: "回避" };
   const rankCells = rankKeys
     .map(
@@ -114,24 +155,29 @@ function renderSlot(side) {
   detail.innerHTML = `
     <div class="base-stats-line">
       種族値 H${base.hp} A${base.atk} B${base.def} C${base.spa} D${base.spd} S${base.spe}
-      （${base.hp + base.atk + base.def + base.spa + base.spd + base.spe}）
     </div>
     <div class="stats-inline" data-stats="${side}">
-      ${STAT_KEYS.map(
-        (k) => `<div class="cell"><span>${STAT_LABELS[k]}</span><strong data-stat="${k}">${stats[k]}</strong></div>`
-      ).join("")}
+      ${vis
+        .map(
+          (k) => `<div class="cell">
+          <span>${STAT_LABELS[k]}${natureArrow(k, nature)}</span>
+          <strong data-stat="${k}">${stats[k]}</strong>
+        </div>`
+        )
+        .join("")}
     </div>
     <div class="ctrl-row">
       <label>特性</label>
       <select data-field="ability">${abilityOptions || "<option>なし</option>"}</select>
     </div>
     ${poke.abilities?.length > 1 ? `<div class="ability-note">特性を切り替えできます</div>` : ""}
-    <div class="ctrl-row">
+    <div class="ctrl-row nature-row">
       <label>性格</label>
-      <select data-field="nature">${natureOptions}</select>
+      <button type="button" class="nature-btn" data-open-nature>${nature}</button>
+      ${natureHint}
     </div>
-    <div class="ev-row">${evCells}</div>
-    <div class="ev-total ${evSum > 510 ? "warn" : ""}" data-ev-total>合計 ${evSum} / 510</div>
+    <div class="ev-row cols-${vis.length}">${evCells}</div>
+    <div class="ev-total ${evSum > EV_MAX_TOTAL ? "warn" : ""}" data-ev-total>努力値合計 ${evSum} / ${EV_MAX_TOTAL}（1項最大${EV_MAX_PER}）</div>
     <div class="rank-row">${rankCells}</div>
   `;
 }
@@ -140,16 +186,33 @@ function updateLiveStats(side) {
   const poke = state[side];
   if (!poke) return;
   const detail = $(`${side}-detail`);
-  const stats = calcAllStats(poke.baseStats, state[`${side}Evs`], state[`${side}Nature`]);
-  for (const k of STAT_KEYS) {
+  const nature = state[`${side}Nature`];
+  const stats = calcAllStats(poke.baseStats, state[`${side}Evs`], nature);
+  const vis = visibleStatsFor(side);
+  for (const k of vis) {
     const el = detail.querySelector(`[data-stat="${k}"]`);
     if (el) el.textContent = String(stats[k]);
+    const cell = el?.closest(".cell");
+    if (cell) {
+      const span = cell.querySelector("span");
+      if (span) span.innerHTML = `${STAT_LABELS[k]}${natureArrow(k, nature)}`;
+    }
   }
   const sum = totalEv(state[`${side}Evs`]);
   const totalEl = detail.querySelector("[data-ev-total]");
   if (totalEl) {
-    totalEl.textContent = `合計 ${sum} / 510`;
-    totalEl.classList.toggle("warn", sum > 510);
+    totalEl.textContent = `努力値合計 ${sum} / ${EV_MAX_TOTAL}（1項最大${EV_MAX_PER}）`;
+    totalEl.classList.toggle("warn", sum > EV_MAX_TOTAL);
+  }
+  const nBtn = detail.querySelector("[data-open-nature]");
+  if (nBtn) nBtn.textContent = nature;
+  const nInfo = getNature(nature);
+  const hint = detail.querySelector(".nature-hint");
+  if (hint) {
+    hint.innerHTML =
+      nInfo.up && nInfo.down
+        ? `<span class="up">▲${STAT_LABELS[nInfo.up]}</span> <span class="down">▼${STAT_LABELS[nInfo.down]}</span>`
+        : `補正なし`;
   }
   const slotMeta = $(`${side}-slot`).querySelector(".meta");
   if (slotMeta) {
@@ -159,6 +222,23 @@ function updateLiveStats(side) {
 
 function bindDetailEvents(side) {
   const detail = $(`${side}-detail`);
+  detail.addEventListener("click", (e) => {
+    const t = e.target;
+    if (!(t instanceof HTMLElement)) return;
+    if (t.dataset.openNature !== undefined || t.closest?.("[data-open-nature]")) {
+      openNaturePicker(side);
+      return;
+    }
+    if (t.dataset.evSet) {
+      const key = t.dataset.evSet;
+      const val = Number(t.dataset.evVal) || 0;
+      state[`${side}Evs`] = clampEvAssign(state[`${side}Evs`], key, val);
+      const input = detail.querySelector(`input[data-ev="${key}"]`);
+      if (input) input.value = String(state[`${side}Evs`][key]);
+      updateLiveStats(side);
+      recalc();
+    }
+  });
   detail.addEventListener("change", (e) => {
     const t = e.target;
     if (!(t instanceof HTMLElement)) return;
@@ -167,17 +247,11 @@ function bindDetailEvents(side) {
       updateLiveStats(side);
       recalc();
     }
-    if (t.dataset.field === "nature") {
-      state[`${side}Nature`] = t.value;
-      updateLiveStats(side);
-      recalc();
-    }
     if (t.dataset.ev) {
       let v = Number(t.value);
       if (!Number.isFinite(v)) v = 0;
-      v = Math.max(0, Math.min(252, v));
-      t.value = String(v);
-      state[`${side}Evs`][t.dataset.ev] = v;
+      state[`${side}Evs`] = clampEvAssign(state[`${side}Evs`], t.dataset.ev, v);
+      t.value = String(state[`${side}Evs`][t.dataset.ev]);
       updateLiveStats(side);
       recalc();
     }
@@ -193,7 +267,6 @@ function bindDetailEvents(side) {
   detail.addEventListener("input", (e) => {
     const t = e.target;
     if (!(t instanceof HTMLInputElement)) return;
-    // 入力中は DOM を壊さず state だけ更新（キャレット維持）
     if (t.dataset.ev) {
       const raw = t.value;
       if (raw === "" || raw === "-") {
@@ -201,7 +274,9 @@ function bindDetailEvents(side) {
       } else {
         let v = Number(raw);
         if (!Number.isFinite(v)) return;
-        state[`${side}Evs`][t.dataset.ev] = Math.max(0, Math.min(252, v));
+        const clamped = clampEvAssign(state[`${side}Evs`], t.dataset.ev, v);
+        state[`${side}Evs`] = clamped;
+        // 入力中は value を強制しない（キャレット維持）。blur/change で補正
       }
       updateLiveStats(side);
       recalc();
@@ -217,6 +292,45 @@ function bindDetailEvents(side) {
       }
       recalc();
     }
+  });
+}
+
+function openNaturePicker(side) {
+  const current = state[`${side}Nature`];
+  const head = NATURE_STAT_ORDER.map((k) => `<th class="up-h">▲${STAT_LABELS[k]}</th>`).join("");
+  const rows = NATURE_STAT_ORDER.map((down) => {
+    const cells = NATURE_STAT_ORDER.map((up) => {
+      if (up === down) return `<td class="na">—</td>`;
+      const name = NATURE_TABLE[down][up];
+      const sel = name === current ? " selected" : "";
+      return `<td><button type="button" class="nat-cell${sel}" data-nature="${name}">${name}</button></td>`;
+    }).join("");
+    return `<tr><th class="down-h">▼${STAT_LABELS[down]}</th>${cells}</tr>`;
+  }).join("");
+
+  const neutrals = NEUTRAL_NATURES.map(
+    (n) =>
+      `<button type="button" class="nat-cell neutral${n === current ? " selected" : ""}" data-nature="${n}">${n}</button>`
+  ).join("");
+
+  openModal(`${side === "atk" ? "攻撃" : "防御"}側の性格`, `
+    <p class="nature-guide"><span class="up">赤▲ = 上昇列</span>　<span class="down">青▼ = 下降行</span></p>
+    <div class="nature-table-wrap">
+      <table class="nature-table">
+        <thead><tr><th></th>${head}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    <div class="neutral-row"><span>無補正:</span> ${neutrals}</div>
+  `);
+
+  $("modal-body").querySelectorAll("[data-nature]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      state[`${side}Nature`] = btn.dataset.nature;
+      renderSlot(side);
+      closeModal();
+      recalc();
+    });
   });
 }
 
@@ -301,6 +415,7 @@ function openPokemonPicker(side) {
 }
 
 function openMovePicker() {
+  const atkTypes = state.atk?.types || [];
   openModal("使う技", `
     <div class="filters">
       <input type="text" id="move-q" placeholder="技名検索" autocomplete="off" />
@@ -316,6 +431,7 @@ function openMovePicker() {
           <option value="変化">変化</option>
         </select>
       </div>
+      <label class="check-inline"><input type="checkbox" id="move-stab-only" ${atkTypes.length ? "checked" : ""} ${atkTypes.length ? "" : "disabled"} /> 攻撃側タイプ一致技のみ（覚え技データ未提供のため近似）</label>
     </div>
     <div class="list" id="move-list"></div>
   `);
@@ -324,17 +440,27 @@ function openMovePicker() {
     const q = ($("move-q").value || "").trim();
     const type = $("move-type").value;
     const cat = $("move-cat").value;
-    const list = state.moves.filter((m) => {
+    const stabOnly = $("move-stab-only")?.checked;
+    let list = state.moves.filter((m) => {
       if (q && !m.name.includes(q)) return false;
       if (type && m.type !== type) return false;
       if (cat && m.category !== cat) return false;
+      if (stabOnly && atkTypes.length && !atkTypes.includes(m.type)) return false;
       return true;
     });
+    // 一致技を先頭に
+    if (atkTypes.length && !stabOnly) {
+      list = [...list].sort((a, b) => {
+        const as = atkTypes.includes(a.type) ? 0 : 1;
+        const bs = atkTypes.includes(b.type) ? 0 : 1;
+        return as - bs || a.name.localeCompare(b.name, "ja");
+      });
+    }
     $("move-list").innerHTML = list
       .slice(0, 250)
       .map((m) => `
         <div class="list-item" data-name="${m.name}">
-          <div class="n">${m.name}</div>
+          <div class="n">${m.name}${atkTypes.includes(m.type) ? " ★" : ""}</div>
           <div class="s">${m.type} / ${m.category}　威力 ${m.power ?? "-"}　命中 ${m.accuracy ?? "-"}　PP ${m.pp}
           <br/>${(m.effect || m.target || "").slice(0, 80)}</div>
         </div>`)
@@ -351,6 +477,7 @@ function openMovePicker() {
   $("move-q").addEventListener("input", renderList);
   $("move-type").addEventListener("change", renderList);
   $("move-cat").addEventListener("change", renderList);
+  $("move-stab-only")?.addEventListener("change", renderList);
   renderList();
   $("move-q").focus();
 }

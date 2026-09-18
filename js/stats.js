@@ -1,4 +1,25 @@
-/** 性格・実数値計算（Lv50 / 個体値31固定） */
+/** 実数値計算（Lv50・個体値31固定の簡略式）
+ * HP   = 種族値 + 75 + 努力値
+ * 他   = floor( (種族値 + 20 + 努力値) × 性格補正 )
+ * 努力値: 1項最大32 / 合計最大66
+ */
+
+export const EV_MAX_PER = 32;
+export const EV_MAX_TOTAL = 66;
+
+/** 上昇列→下降行 の性格表（添付表どおり） */
+export const NATURE_TABLE = {
+  // down -> up -> name
+  atk: { spa: "ひかえめ", def: "ずぶとい", spd: "おだやか", spe: "おくびょう" },
+  spa: { atk: "いじっぱり", def: "わんぱく", spd: "しんちょう", spe: "ようき" },
+  def: { atk: "さみしがり", spa: "おっとり", spd: "おとなしい", spe: "せっかち" },
+  spd: { atk: "やんちゃ", spa: "うっかりや", def: "のうてんき", spe: "むじゃき" },
+  spe: { atk: "ゆうかん", spa: "れいせい", def: "のんき", spd: "なまいき" },
+};
+
+export const NEUTRAL_NATURES = ["がんばりや", "すなお", "てれや", "きまぐれ", "まじめ"];
+
+export const NATURE_STAT_ORDER = ["atk", "spa", "def", "spd", "spe"];
 
 export const NATURES = [
   { name: "がんばりや", up: null, down: null },
@@ -38,11 +59,17 @@ export const STAT_LABELS = {
   spe: "素早さ",
 };
 
-const LEVEL = 50;
-const IV = 31;
+/** 攻撃側に表示する項目 */
+export const ATK_VISIBLE_STATS = ["atk", "spa"];
+/** 防御側に表示する項目 */
+export const DEF_VISIBLE_STATS = ["hp", "def", "spd"];
+
+export function getNature(natureName) {
+  return NATURES.find((x) => x.name === natureName) || NATURES[0];
+}
 
 export function natureFactor(natureName, stat) {
-  const n = NATURES.find((x) => x.name === natureName) || NATURES[0];
+  const n = getNature(natureName);
   if (stat === "hp") return 1;
   if (n.up === stat) return 1.1;
   if (n.down === stat) return 0.9;
@@ -50,11 +77,13 @@ export function natureFactor(natureName, stat) {
 }
 
 export function calcStat(base, ev, natureName, stat) {
+  const e = Math.max(0, Math.min(EV_MAX_PER, ev || 0));
   if (stat === "hp") {
-    return Math.floor(((base * 2 + IV + Math.floor(ev / 4)) * LEVEL) / 100) + LEVEL + 10;
+    // HP = 種族値 + 75 + 努力値
+    return base + 75 + e;
   }
-  const raw = Math.floor(((base * 2 + IV + Math.floor(ev / 4)) * LEVEL) / 100) + 5;
-  return Math.floor(raw * natureFactor(natureName, stat));
+  // 他 = floor((種族値 + 20 + 努力値) × 性格)
+  return Math.floor((base + 20 + e) * natureFactor(natureName, stat));
 }
 
 export function calcAllStats(baseStats, evs, natureName) {
@@ -65,7 +94,6 @@ export function calcAllStats(baseStats, evs, natureName) {
   return out;
 }
 
-/** 能力ランク補正 -6〜+6 */
 export function rankMultiplier(rank) {
   if (rank >= 0) return (2 + rank) / 2;
   return 2 / (2 - rank);
@@ -85,4 +113,13 @@ export function emptyRanks() {
 
 export function totalEv(evs) {
   return STAT_KEYS.reduce((s, k) => s + (evs[k] || 0), 0);
+}
+
+/** 合計66を超えないよう、指定ステに値を入れる */
+export function clampEvAssign(evs, key, value) {
+  const next = { ...evs };
+  const others = totalEv(evs) - (evs[key] || 0);
+  const maxForKey = Math.min(EV_MAX_PER, EV_MAX_TOTAL - others);
+  next[key] = Math.max(0, Math.min(maxForKey, value));
+  return next;
 }
