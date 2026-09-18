@@ -558,11 +558,15 @@ export function calculateDamage(input) {
     details.push("たつじんのおび: 威力×1.2");
   }
 
-  let isCrit = critical || textHas(move, "必ず急所") || ["こおりのいぶき", "やまあらし", "トリックフラワー"].includes(move.name);
-  if (criticalBlocked(defenderAbility, ignoresAbility(attackerAbility), attackerAbility)) {
-    isCrit = false;
-  }
-  if (isCrit) details.push("急所: あり");
+  const forceCrit =
+    textHas(move, "必ず急所") || ["こおりのいぶき", "やまあらし", "トリックフラワー"].includes(move.name);
+  const critAllowed = !criticalBlocked(
+    defenderAbility,
+    ignoresAbility(attackerAbility),
+    attackerAbility
+  );
+  // 「急所」チェック時は急所結果をメインに。未チェックでも通常＋急所の両方を出す
+  const wantCritOnly = critical && critAllowed;
 
   const stamina = defenderAbility === "じきゅうりょく" && !ignoresAbility(attackerAbility);
   if (stamina) details.push("防御側 じきゅうりょく: 被弾ごとに防御+1（2発目以降に反映）");
@@ -581,7 +585,7 @@ export function calculateDamage(input) {
   }
 
   function damageAt(defRankBonus, hitPower, rollIndex, opts = {}) {
-    const { firstHitOfBattle = true } = opts;
+    const { firstHitOfBattle = true, isCrit = false } = opts;
     const defRanksAdj = {
       ...defender.ranks,
       def: Math.min(6, (defender.ranks.def || 0) + defRankBonus),
@@ -645,7 +649,7 @@ export function calculateDamage(input) {
     return { damage: Math.max(1, x), a, d, atkName, defName, stab, notes: [...defMod.notes, ...atkMod.notes], blocked: false };
   }
 
-  function rollsForMoveUse(startingStaminaStacks, disguiseAlreadyBroken = disguiseBroken) {
+  function rollsForMoveUse(startingStaminaStacks, disguiseAlreadyBroken = disguiseBroken, isCrit = false) {
     const out = [];
     for (let rollIndex = 0; rollIndex <= 15; rollIndex++) {
       let sum = 0;
@@ -653,7 +657,10 @@ export function calculateDamage(input) {
       let broken = disguiseAlreadyBroken;
       for (let i = 0; i < hits.max; i++) {
         const hpwr = hits.powers ? hits.powers[i] : power;
-        const r = damageAt(stamina ? stacks : 0, hpwr, rollIndex, { firstHitOfBattle: !broken });
+        const r = damageAt(stamina ? stacks : 0, hpwr, rollIndex, {
+          firstHitOfBattle: !broken,
+          isCrit: forceCrit || isCrit,
+        });
         if (r.blocked && defenderAbility === "ばけのかわ" && !broken) {
           broken = true;
           sum += 0;
@@ -667,44 +674,128 @@ export function calculateDamage(input) {
     return out;
   }
 
-  const rolls = rollsForMoveUse(0);
-  const minDmg = Math.min(...rolls);
-  const maxDmg = Math.max(...rolls);
-  const sample = damageAt(0, hits.powers ? hits.powers[0] : power, 15, { firstHitOfBattle: !disguiseBroken });
+  const hp = defStats.hp;
+  const healPerTurn = endOfTurnHealAmount(defender, hp);
+  if (healPerTurn > 0) {
+    details.push(`回復込み表示: たべのこし等 −${healPerTurn}/ターン（参考ダメ計と同じ）`);
+  }
+
+  function packResult(rawRolls, label) {
+    const rawMin = Math.min(...rawRolls);
+    const rawMax = Math.max(...rawRolls);
+    const min = Math.max(0, rawMin - healPerTurn);
+    const max = Math.max(0, rawMax - healPerTurn);
+    const percentMin = Math.floor((min / hp) * 1000) / 10;
+    const percentMax = Math.floor((max / hp) * 1000) / 10;
+    const displayRolls = rawRolls.map((r) => Math.max(0, r - healPerTurn));
+    // メインの確定数は1発ダメージ基準（回復込み表示と一致）。じきゅうりょくは別注記。
+    const simple = koText(min, max, hp);
+    const hitsMatch = simple.match(/(\d+)発/);
+    const hitsN = hitsMatch ? Number(hitsMatch[1]) : null;
+    let koChance = null;
+    let guaranteed = /^確定/.test(simple);
+    if (hitsN && hitsN <= 4) {
+      const turnRolls = Array.from({ length: hitsN }, () => displayRolls);
+      const info = koChanceInNTurns(turnRolls, hp, hitsN);
+      koChance = Math.round(info.chance * 1000) / 10;
+      guaranteed = info.guaranteed;
+    } else if (guaranteed) {
+      koChance = 100;
+    }
+    const koLabel = guaranteed
+      ? `確定${hitsN}発`
+      : hitsN
+        ? `乱数${hitsN}発${koChance != null ? `（${koChance}%）` : ""}`
+        : simple;
+    return {
+      label,
+      rawMin,
+      rawMax,
+      min,
+      max,
+      rolls: rawRolls,
+      percentMin,
+      percentMax,
+      koText: koLabel,
+      koChance,
+      koHits: hitsN,
+      koGuaranteed: guaranteed,
+      healPerTurn,
+    };
+  }
+
+  const sample = damageAt(0, hits.powers ? hits.powers[0] : power, 15, {
+    firstHitOfBattle: !disguiseBroken,
+    isCrit: forceCrit || wantCritOnly,
+  });
   details.push(`攻撃側能力(${sample.atkName}): ${sample.a} / 防御側能力(${sample.defName}): ${sample.d}`);
   details.push(`STAB: ×${sample.stab}${proteanLike ? `（${attackerAbility}後）` : ""}`);
-  (sample.notes || []).forEach((n) => { if (!details.includes(n)) details.push(n); });
-  details.push(`天候: ${weather}${attackerAbility === "メガソーラー" ? "（攻撃側は晴れ扱い）" : ""} / フィールド: ${field}`);
+  (sample.notes || []).forEach((n) => {
+    if (!details.includes(n)) details.push(n);
+  });
+  details.push(
+    `天候: ${weather}${attackerAbility === "メガソーラー" ? "（攻撃側は晴れ扱い）" : ""} / フィールド: ${field}`
+  );
   if (wallActive) details.push("壁: あり（×2/3）");
   if (attackerItem === "こだわりハチマキ") details.push("こだわりハチマキ: 攻撃×1.5");
   if (attackerItem === "こだわりメガネ") details.push("こだわりメガネ: 特攻×1.5");
   details.push("乱数: 0.85〜1.00");
-  details.push(`最低ダメージ: ${minDmg} / 最高ダメージ: ${maxDmg}`);
   if (hits.max > 1) details.push(`連続攻撃: ${hits.min}〜${hits.max}回（表示は${hits.max}回命中想定）`);
 
-  const hp = defStats.hp;
-  const percentMin = Math.floor((minDmg / hp) * 1000) / 10;
-  const percentMax = Math.floor((maxDmg / hp) * 1000) / 10;
-  const koInfo = analyzeKoChance({
-    hp,
-    stamina,
-    rollsForMoveUse: (stacks, turnIndex = 0) =>
-      rollsForMoveUse(stacks, disguiseBroken || turnIndex > 0),
-    maxTurns: 8,
-  });
-  details.push(`KO判定: ${koInfo.text}${koInfo.chance != null ? `（倒せる乱数 ${koInfo.chance}%）` : ""}`);
-  if (stamina && koInfo.note) details.push(koInfo.note);
+  let normalPack = null;
+  let critPack = null;
+  if (forceCrit) {
+    normalPack = packResult(rollsForMoveUse(0, disguiseBroken, true), "急所（必中）");
+    details.push(`急所（必中） 生ダメージ: ${normalPack.rawMin}〜${normalPack.rawMax}`);
+  } else {
+    normalPack = packResult(rollsForMoveUse(0, disguiseBroken, false), "通常");
+    details.push(`通常 生ダメージ: ${normalPack.rawMin}〜${normalPack.rawMax}`);
+    if (healPerTurn > 0) {
+      details.push(`通常 表示（回復−${healPerTurn}）: ${normalPack.min}〜${normalPack.max}`);
+    }
+    if (critAllowed) {
+      critPack = packResult(rollsForMoveUse(0, disguiseBroken, true), "急所");
+      details.push(`急所 生ダメージ: ${critPack.rawMin}〜${critPack.rawMax}`);
+      if (healPerTurn > 0) {
+        details.push(`急所 表示（回復−${healPerTurn}）: ${critPack.min}〜${critPack.max}`);
+      }
+    }
+  }
+
+  // じきゅうりょく込みの詳細KO（注記用）
+  let staminaKoNote = null;
+  if (stamina && normalPack) {
+    const koInfo = analyzeKoChance({
+      hp,
+      stamina: true,
+      rollsForMoveUse: (stacks, turnIndex = 0) =>
+        rollsForMoveUse(stacks, disguiseBroken || turnIndex > 0, false),
+      maxTurns: 8,
+    });
+    staminaKoNote = `じきゅうりょく込みKO: ${koInfo.text}`;
+    details.push(staminaKoNote);
+  }
+
+  const primary = wantCritOnly && critPack ? critPack : normalPack || critPack;
+  details.push(`KO判定（表示ダメージ基準）: ${primary.koText}`);
+
   const chip = chipDamage(defender, defStats.hp, weather, field, screens, input);
   return {
-    min: minDmg,
-    max: maxDmg,
-    rolls,
-    percentMin,
-    percentMax,
-    koText: koInfo.text,
-    koChance: koInfo.chance,
-    koHits: koInfo.hits,
-    koGuaranteed: koInfo.guaranteed,
+    min: primary.min,
+    max: primary.max,
+    rawMin: primary.rawMin,
+    rawMax: primary.rawMax,
+    rolls: primary.rolls,
+    percentMin: primary.percentMin,
+    percentMax: primary.percentMax,
+    koText: primary.koText,
+    koChance: primary.koChance,
+    koHits: primary.koHits,
+    koGuaranteed: primary.koGuaranteed,
+    healPerTurn,
+    normal: normalPack,
+    critical: critPack,
+    staminaKoNote,
     effectiveness: sample.blocked ? "化けの皮等で無効" : effectivenessLabel(typeMult),
     typeMult: sample.blocked ? 0 : typeMult,
     details,
@@ -717,6 +808,19 @@ export function calculateDamage(input) {
     attackerStats: atkStats,
     defenderStats: defStats,
   };
+}
+
+/** ターン終了回復（表示用に1発ダメージから差し引く） */
+function endOfTurnHealAmount(defender, maxHp) {
+  let heal = 0;
+  if (defender.item === "たべのこし") heal += Math.floor(maxHp / 16);
+  if (
+    defender.item === "くろいヘドロ" &&
+    defender.types.includes("どく")
+  ) {
+    heal += Math.floor(maxHp / 16);
+  }
+  return heal;
 }
 
 function finalizeFixed(dmg, hp, moveType, defTypes, details, move, note) {

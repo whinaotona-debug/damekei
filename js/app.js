@@ -609,22 +609,42 @@ function recalc() {
   else if (result.typeMult > 1) effClass = "";
   else if (result.typeMult < 1) effClass = "resist";
 
-  const main = result.koChance != null && !result.koGuaranteed
-    ? `${result.percentMin}％～${result.percentMax}％　${result.koText}`
-    : `${result.percentMin}％～${result.percentMax}％　${result.koText}`;
-  const sub = `${result.min}～${result.max} ダメージ / 相手HP ${result.defenderHp}${
-    result.typeMult === 0 && /化け/.test(result.effectiveness || "")
-      ? "（1発目は化けの皮で無効 → KOは2発目以降）"
-      : ""
-  }`;
-  const chanceLine =
-    result.koChance != null
-      ? `<div class="result-sub">${
-          result.koGuaranteed
-            ? `${result.koHits}発で確定（100%）`
-            : `${result.koHits}発で倒せる乱数: ${result.koChance}%（16通り×組み合わせ）`
-        }</div>`
-      : "";
+  function rowHtml(pack, tone) {
+    if (!pack) return "";
+    const healNote =
+      pack.healPerTurn > 0
+        ? `<span class="result-heal">${pack.label} ${pack.healPerTurn} 回復</span>`
+        : "";
+    const barPct = Math.min(100, pack.percentMax);
+    const barMin = Math.min(100, pack.percentMin);
+    return `
+      <div class="dmg-row ${tone}">
+        <div class="dmg-row-main">
+          <span class="dmg-pct">${pack.percentMin} ~ ${pack.percentMax}%</span>
+          <span class="dmg-abs">(${pack.min} ~ ${pack.max})</span>
+          <span class="dmg-ko">${pack.koText}</span>
+        </div>
+        <div class="dmg-bar" aria-hidden="true">
+          <i style="left:0;width:${barPct}%"></i>
+          <b style="left:0;width:${barMin}%"></b>
+        </div>
+        ${healNote}
+      </div>`;
+  }
+
+  const normal = result.normal;
+  const crit = result.critical;
+  const primary = result.critical && $("critical").checked ? result.critical : result.normal || result;
+  const main = `${primary.percentMin}％～${primary.percentMax}％　${primary.koText}`;
+  const dualRows =
+    normal || crit
+      ? `<div class="dmg-rows">${rowHtml(normal, "tone-normal")}${rowHtml(crit, "tone-crit")}</div>`
+      : `<div class="result-main">${main}</div>
+         <div class="result-sub">${primary.min}～${primary.max} ダメージ / 相手HP ${result.defenderHp}</div>`;
+
+  const staminaNote = result.staminaKoNote
+    ? `<div class="result-sub">${result.staminaKoNote}</div>`
+    : "";
 
   const chipHtml = (result.chip || []).length
     ? `<ul class="chip-list">${result.chip
@@ -637,15 +657,14 @@ function recalc() {
 
   box.innerHTML = `
     <div class="result-sub">${state.atk.name} の ${state.move.name} → ${state.def.name}</div>
-    <div class="result-main">${main}</div>
-    <div class="result-sub">${sub}</div>
-    ${chanceLine}
+    ${dualRows}
+    ${staminaNote}
     <div class="result-eff ${effClass}">${result.effectiveness}</div>
     ${chipHtml}
     <details class="calc-details">
       <summary>計算詳細</summary>
       <ul>${result.details.map((d) => `<li>${d}</li>`).join("")}</ul>
-      <p class="result-sub">乱数一覧: ${result.rolls.join(", ")}</p>
+      <p class="result-sub">乱数一覧: ${(primary.rolls || result.rolls || []).join(", ")}</p>
     </details>
   `;
   $("result-mini").textContent = main;

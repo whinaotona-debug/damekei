@@ -399,6 +399,59 @@ select {
 .result-eff.resist { background: #fff6df; color: var(--warn); }
 .result-eff.immune, .result-eff.weak { background: #fdecea; color: var(--bad); }
 .chip-list { margin: 4px 0 0; padding-left: 1.1rem; font-size: 0.78rem; }
+
+.dmg-rows { display: flex; flex-direction: column; gap: 6px; margin: 4px 0; }
+.dmg-row {
+  background: #1a2430;
+  color: #fff;
+  border-radius: 8px;
+  padding: 6px 8px 4px;
+}
+.dmg-row.tone-normal { background: linear-gradient(90deg, #2a3340, #1a2430); }
+.dmg-row.tone-crit { background: linear-gradient(90deg, #3a2438, #1a2030); }
+.dmg-row-main {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: baseline;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+.dmg-pct { font-size: 1.05rem; }
+.dmg-abs { opacity: 0.85; font-weight: 600; font-size: 0.85rem; }
+.dmg-ko {
+  margin-left: auto;
+  background: #ff8a3d;
+  color: #1a1208;
+  padding: 1px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+}
+.tone-crit .dmg-ko { background: #ff6b9d; color: #1a0810; }
+.dmg-bar {
+  position: relative;
+  height: 8px;
+  margin-top: 4px;
+  background: #0d141c;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.dmg-bar i, .dmg-bar b {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 4px;
+}
+.tone-normal .dmg-bar i { background: #f0b429; opacity: 0.55; }
+.tone-normal .dmg-bar b { background: #f0b429; }
+.tone-crit .dmg-bar i { background: #ff6b9d; opacity: 0.45; }
+.tone-crit .dmg-bar b { background: #ff6b9d; }
+.result-heal {
+  display: inline-block;
+  margin-top: 2px;
+  font-size: 0.72rem;
+  opacity: 0.75;
+}
 details.calc-details {
   margin-top: 6px;
   background: #f3f7f9;
