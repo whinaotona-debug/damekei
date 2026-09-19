@@ -571,6 +571,12 @@ export function calculateDamage(input) {
   const stamina = defenderAbility === "じきゅうりょく" && !ignoresAbility(attackerAbility);
   if (stamina) details.push("防御側 じきゅうりょく: 被弾ごとに防御+1（2発目以降に反映）");
 
+  const hasDisguise =
+    defenderAbility === "ばけのかわ" && !ignoresAbility(attackerAbility);
+  if (hasDisguise) {
+    details.push("防御側 ばけのかわ: 1発目で破れ・最大HPの1/8ダメージ → 2発目以降に技ダメージ");
+  }
+
   const atkWeather = effectiveWeatherForAttacker(weather, attackerAbility);
   const wallActive =
     (move.category === "物理" && (screens.reflect || screens.auroraVeil)) ||
@@ -600,7 +606,7 @@ export function calculateDamage(input) {
       defenderTypes: defender.types,
       weather: atkWeather,
       hpFull: !hpNotFull,
-      disguiseIntact: !disguiseBroken && firstHitOfBattle,
+      disguiseIntact: hasDisguise && firstHitOfBattle,
       moldBreak: ignoresAbility(attackerAbility),
     });
     if (defMod.blockHit || defMod.immune) {
@@ -649,21 +655,22 @@ export function calculateDamage(input) {
     return { damage: Math.max(1, x), a, d, atkName, defName, stab, notes: [...defMod.notes, ...atkMod.notes], blocked: false };
   }
 
-  function rollsForMoveUse(startingStaminaStacks, disguiseAlreadyBroken = disguiseBroken, isCrit = false) {
+  function rollsForMoveUse(startingStaminaStacks, disguiseAlreadyBroken = false, isCrit = false) {
     const out = [];
+    const disguiseChip = Math.floor(defStats.hp / 8);
     for (let rollIndex = 0; rollIndex <= 15; rollIndex++) {
       let sum = 0;
       let stacks = startingStaminaStacks;
-      let broken = disguiseAlreadyBroken;
+      let broken = disguiseAlreadyBroken || !hasDisguise;
       for (let i = 0; i < hits.max; i++) {
         const hpwr = hits.powers ? hits.powers[i] : power;
         const r = damageAt(stamina ? stacks : 0, hpwr, rollIndex, {
-          firstHitOfBattle: !broken,
+          firstHitOfBattle: hasDisguise && !broken,
           isCrit: forceCrit || isCrit,
         });
-        if (r.blocked && defenderAbility === "ばけのかわ" && !broken) {
+        if (r.blocked && hasDisguise && !broken) {
           broken = true;
-          sum += 0;
+          sum += disguiseChip;
         } else {
           sum += r.damage;
           if (stamina && !r.blocked) stacks = Math.min(6, stacks + 1);
@@ -680,22 +687,24 @@ export function calculateDamage(input) {
     details.push(`回復込み表示: たべのこし等 −${healPerTurn}/ターン（参考ダメ計と同じ）`);
   }
 
-  function packResult(rawRolls, label) {
-    const rawMin = Math.min(...rawRolls);
-    const rawMax = Math.max(...rawRolls);
+  function packResult(connectingRolls, label) {
+    // 表示は破れたあとの技ダメージ。KOは化けの皮1発目（1/8）込み
+    const rawMin = Math.min(...connectingRolls);
+    const rawMax = Math.max(...connectingRolls);
     const min = Math.max(0, rawMin - healPerTurn);
     const max = Math.max(0, rawMax - healPerTurn);
     const percentMin = Math.floor((min / hp) * 1000) / 10;
     const percentMax = Math.floor((max / hp) * 1000) / 10;
-    // KOは生ダメージ＋ターン間回復で、倒せる最速の発数を表示（参考ダメ計と同じ）
-    const ko = analyzeKoWithHeal(rawRolls, hp, healPerTurn, 8);
+    const ko = analyzeKoWithHeal(connectingRolls, hp, healPerTurn, {
+      disguise: hasDisguise,
+    });
     return {
       label,
       rawMin,
       rawMax,
       min,
       max,
-      rolls: rawRolls,
+      rolls: connectingRolls,
       percentMin,
       percentMax,
       koText: ko.text,
@@ -707,7 +716,7 @@ export function calculateDamage(input) {
   }
 
   const sample = damageAt(0, hits.powers ? hits.powers[0] : power, 15, {
-    firstHitOfBattle: !disguiseBroken,
+    firstHitOfBattle: false,
     isCrit: forceCrit || wantCritOnly,
   });
   details.push(`攻撃側能力(${sample.atkName}): ${sample.a} / 防御側能力(${sample.defName}): ${sample.d}`);
@@ -727,16 +736,16 @@ export function calculateDamage(input) {
   let normalPack = null;
   let critPack = null;
   if (forceCrit) {
-    normalPack = packResult(rollsForMoveUse(0, disguiseBroken, true), "急所（必中）");
+    normalPack = packResult(rollsForMoveUse(0, true, true), "急所（必中）");
     details.push(`急所（必中） 生ダメージ: ${normalPack.rawMin}〜${normalPack.rawMax}`);
   } else {
-    normalPack = packResult(rollsForMoveUse(0, disguiseBroken, false), "通常");
+    normalPack = packResult(rollsForMoveUse(0, true, false), "通常");
     details.push(`通常 生ダメージ: ${normalPack.rawMin}〜${normalPack.rawMax}`);
     if (healPerTurn > 0) {
       details.push(`通常 表示（回復−${healPerTurn}）: ${normalPack.min}〜${normalPack.max}`);
     }
     if (critAllowed) {
-      critPack = packResult(rollsForMoveUse(0, disguiseBroken, true), "急所");
+      critPack = packResult(rollsForMoveUse(0, true, true), "急所");
       details.push(`急所 生ダメージ: ${critPack.rawMin}〜${critPack.rawMax}`);
       if (healPerTurn > 0) {
         details.push(`急所 表示（回復−${healPerTurn}）: ${critPack.min}〜${critPack.max}`);
@@ -751,7 +760,7 @@ export function calculateDamage(input) {
       hp,
       stamina: true,
       rollsForMoveUse: (stacks, turnIndex = 0) =>
-        rollsForMoveUse(stacks, disguiseBroken || turnIndex > 0, false),
+        rollsForMoveUse(stacks, !hasDisguise || turnIndex > 0, false),
       maxTurns: 8,
     });
     staminaKoNote = `じきゅうりょく込みKO: ${koInfo.text}`;
@@ -759,7 +768,7 @@ export function calculateDamage(input) {
   }
 
   const primary = wantCritOnly && critPack ? critPack : normalPack || critPack;
-  details.push(`KO判定（生ダメージ＋回復・最速発数）: ${primary.koText}`);
+  details.push(`KO判定: ${primary.koText}`);
 
   const chip = chipDamage(defender, defStats.hp, weather, field, screens, input);
   return {
@@ -778,8 +787,8 @@ export function calculateDamage(input) {
     normal: normalPack,
     critical: critPack,
     staminaKoNote,
-    effectiveness: sample.blocked ? "化けの皮等で無効" : effectivenessLabel(typeMult),
-    typeMult: sample.blocked ? 0 : typeMult,
+    effectiveness: effectivenessLabel(typeMult),
+    typeMult,
     details,
     defenderHp: hp,
     moveType,
@@ -807,11 +816,26 @@ function endOfTurnHealAmount(defender, maxHp) {
 
 /**
  * 生ダメージ乱数とターン間回復から、倒せる最速発数の確定/乱数を求める。
- * （表示％は回復差し引きでも、KO判定は生ダメージ＋回復で行う）
+ * disguise: 1発目は最大HPの1/8（化けの皮破れ）、2発目以降が connectingRolls
+ * 食べ残し等で削り切れない場合は「倒せない」
  */
-function analyzeKoWithHeal(rawRolls, hp, healPerTurn, maxTurns = 8) {
+function analyzeKoWithHeal(connectingRolls, hp, healPerTurn, opts = {}) {
+  const disguise = !!opts.disguise;
+  const maxTurns = opts.maxTurns ?? 64;
+  const chip = Math.floor(hp / 8);
+
+  if (!canEventuallyKo(connectingRolls, hp, healPerTurn, disguise, chip)) {
+    return { text: "倒せない", chance: null, hits: null, guaranteed: false };
+  }
+
   for (let n = 1; n <= maxTurns; n++) {
-    const { chance, guaranteed, possible } = koChanceWithHeal(rawRolls, hp, healPerTurn, n);
+    const { chance, guaranteed, possible } = koChanceWithHeal(
+      connectingRolls,
+      hp,
+      healPerTurn,
+      n,
+      { disguise, chip }
+    );
     if (!possible) continue;
     if (guaranteed) {
       return { text: `確定${n}発`, chance: 100, hits: n, guaranteed: true };
@@ -823,17 +847,43 @@ function analyzeKoWithHeal(rawRolls, hp, healPerTurn, maxTurns = 8) {
       guaranteed: false,
     };
   }
-  return { text: "ダメージ不足", chance: null, hits: null, guaranteed: false };
+  return { text: "倒せない", chance: null, hits: null, guaranteed: false };
 }
 
 function formatKoChance(chance01) {
   const pct = chance01 * 100;
-  if (pct < 1) return Math.round(pct * 100) / 100; // 0.39
-  return Math.round(pct * 10) / 10; // 21.6
+  if (pct < 1) return Math.round(pct * 100) / 100;
+  return Math.round(pct * 10) / 10;
 }
 
-/** n発（同一乱数分布・ターン間に heal）で倒せる割合 */
-function koChanceWithHeal(rawRolls, hp, healPerTurn, n) {
+/** 最大乱数でも回復に負ける／削れない場合 false */
+function canEventuallyKo(connectingRolls, hp, healPerTurn, disguise, chip) {
+  const maxD = Math.max(...connectingRolls);
+  let h = hp;
+  let broken = !disguise;
+  for (let t = 0; t < 200; t++) {
+    const dmg = disguise && !broken ? chip : maxD;
+    if (disguise && !broken) broken = true;
+    h -= dmg;
+    if (h <= 0) return true;
+    if (healPerTurn > 0) h = Math.min(hp, h + healPerTurn);
+    // 破れたあと技ダメが回復以下なら永遠に削れない
+    if (broken && maxD <= healPerTurn) return false;
+  }
+  return false;
+}
+
+function damageForTurn(connectingRolls, rollIndex, turn, disguise, chip) {
+  if (disguise && turn === 0) return chip;
+  return connectingRolls[rollIndex];
+}
+
+/** n発で倒せる割合（1発目化けの皮対応） */
+function koChanceWithHeal(connectingRolls, hp, healPerTurn, n, opts = {}) {
+  const disguise = !!opts.disguise;
+  const chip = opts.chip ?? Math.floor(hp / 8);
+  const len = connectingRolls.length;
+
   if (n <= 5) {
     let ko = 0;
     let total = 0;
@@ -843,10 +893,11 @@ function koChanceWithHeal(rawRolls, hp, healPerTurn, n) {
         if (hpLeft <= 0) ko += 1;
         return;
       }
-      for (let i = 0; i < rawRolls.length; i++) {
-        let h = hpLeft - rawRolls[i];
+      for (let i = 0; i < len; i++) {
+        const dmg = damageForTurn(connectingRolls, i, turn, disguise, chip);
+        let h = hpLeft - dmg;
         if (h <= 0) {
-          const rest = rawRolls.length ** (n - turn - 1);
+          const rest = len ** (n - turn - 1);
           ko += rest;
           total += rest;
         } else {
@@ -866,20 +917,22 @@ function koChanceWithHeal(rawRolls, hp, healPerTurn, n) {
     };
   }
 
-  // nが大きいときは min/max 近似
-  let hAfterMin = hp;
-  let hAfterMax = hp;
+  // nが大きい: 最小/最大ダメージ経路で判定
+  let hMin = hp; // 残HP（攻撃側ワースト＝最小ダメ）
+  let hMax = hp; // 残HP（攻撃側ベスト＝最大ダメ）→ 小さいほどよく削れる
   for (let t = 0; t < n; t++) {
-    hAfterMin -= rawRolls[rawRolls.length - 1];
-    hAfterMax -= rawRolls[0];
+    const minD = disguise && t === 0 ? chip : connectingRolls[0];
+    const maxD = disguise && t === 0 ? chip : connectingRolls[len - 1];
+    hMin -= minD;
+    hMax -= maxD;
     if (t < n - 1 && healPerTurn > 0) {
-      if (hAfterMin > 0) hAfterMin = Math.min(hp, hAfterMin + healPerTurn);
-      if (hAfterMax > 0) hAfterMax = Math.min(hp, hAfterMax + healPerTurn);
+      if (hMin > 0) hMin = Math.min(hp, hMin + healPerTurn);
+      if (hMax > 0) hMax = Math.min(hp, hMax + healPerTurn);
     }
   }
-  if (hAfterMax <= 0) return { chance: 1, guaranteed: true, possible: true };
-  if (hAfterMin > 0) return { chance: 0, guaranteed: false, possible: false };
-  return { chance: 0.5, guaranteed: false, possible: true };
+  if (hMax <= 0 && hMin <= 0) return { chance: 1, guaranteed: true, possible: true };
+  if (hMax <= 0) return { chance: 0.5, guaranteed: false, possible: true };
+  return { chance: 0, guaranteed: false, possible: false };
 }
 
 function finalizeFixed(dmg, hp, moveType, defTypes, details, move, note) {

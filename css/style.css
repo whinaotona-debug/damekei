@@ -446,6 +446,12 @@ select {
   padding: 0;
   font-weight: 800;
 }
+.dmg-ko.ko-fail {
+  background: transparent;
+  color: #ff8a8a;
+  padding: 0;
+  font-weight: 800;
+}
 .tone-crit .dmg-ko.ko-sure { color: #6dffa0; }
 .tone-crit .dmg-ko.ko-rand { color: #ffd36a; }
 .dmg-bar {

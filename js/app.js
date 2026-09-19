@@ -712,7 +712,7 @@ function recalc() {
       : $("def-status").value === "どく" || $("def-status").value === "もうどく"
         ? $("def-status").value
         : null,
-    disguiseBroken: $("disguiseBroken").checked,
+    disguiseBroken: false,
     hpNotFull: $("hpNotFull").checked,
     movingLast: $("movingLast").checked,
   });
@@ -739,7 +739,11 @@ function recalc() {
         : `<span class="result-heal">${pack.label}</span>`;
     const barPct = Math.min(100, pack.percentMax);
     const barMin = Math.min(100, pack.percentMin);
-    const koClass = pack.koGuaranteed ? "ko-sure" : "ko-rand";
+    const koClass = pack.koText === "倒せない"
+      ? "ko-fail"
+      : pack.koGuaranteed
+        ? "ko-sure"
+        : "ko-rand";
     return `
       <div class="dmg-row ${tone}">
         <div class="dmg-row-main">
@@ -853,7 +857,6 @@ function wire() {
     "gravity",
     "helpBoost",
     "spikes",
-    "disguiseBroken",
     "hpNotFull",
     "movingLast",
   ].forEach((id) => {
