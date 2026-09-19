@@ -12,16 +12,16 @@ import {
   totalEv,
   clampEvAssign,
   getNature,
-} from "./stats.js?v=20260920a";
-import { TYPES } from "./types.js?v=20260920a";
-import { calculateDamage } from "./damage.js?v=20260920a";
+} from "./stats.js?v=20260920c";
+import { TYPES } from "./types.js?v=20260920c";
+import { calculateDamage } from "./damage.js?v=20260920c";
 import {
   loadTeams,
   getActiveSlot,
   setActiveSlot,
   applyUiMode,
   isMegaName,
-} from "./team-store.js?v=20260920a";
+} from "./team-store.js?v=20260920c";
 import {
   $,
   textMatchesQuery,
@@ -30,7 +30,7 @@ import {
   loadGameData,
   wireModalClose,
   wireUiModeToggle,
-} from "./common.js?v=20260920a";
+} from "./common.js?v=20260920c";
 
 const state = {
   pokemon: [],
@@ -467,6 +467,7 @@ function wire() {
     (e) => {
       const t = e.target;
       if (!(t instanceof HTMLInputElement) || !t.dataset.ev) return;
+      if (document.activeElement !== t) return;
       e.preventDefault();
       const cur = Number(t.value) || 0;
       state.atkEvs = clampEvAssign(state.atkEvs, t.dataset.ev, cur + (e.deltaY < 0 ? 1 : -1));

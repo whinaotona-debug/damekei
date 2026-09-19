@@ -21,11 +21,12 @@ html[data-ui="ipad"] {
   --ui-max: 1100px;
 }
 
-html.tools-page,
+html:has(body.tools-page),
 body.tools-page {
-  overflow: auto;
-  height: auto;
+  overflow: auto !important;
+  height: auto !important;
   min-height: 100%;
+  overscroll-behavior: auto;
 }
 body.tools-page .hub-app .poke-slot {
   display: block;

@@ -11,8 +11,8 @@ import {
   totalEv,
   clampEvAssign,
   getNature,
-} from "./stats.js?v=20260920b";
-import { TYPES } from "./types.js?v=20260920b";
+} from "./stats.js?v=20260920c";
+import { TYPES } from "./types.js?v=20260920c";
 import {
   loadTeams,
   replaceTeamAt,
@@ -22,7 +22,7 @@ import {
   applyUiMode,
   isMegaName,
   emptyMember,
-} from "./team-store.js?v=20260920b";
+} from "./team-store.js?v=20260920c";
 import {
   $,
   textMatchesQuery,
@@ -31,8 +31,8 @@ import {
   loadGameData,
   wireModalClose,
   wireUiModeToggle,
-} from "./common.js?v=20260920b";
-import { buildOverviewHtml, downloadOverviewPng } from "./overview.js?v=20260920b";
+} from "./common.js?v=20260920c";
+import { buildOverviewHtml, downloadOverviewPng } from "./overview.js?v=20260920c";
 
 const state = {
   pokemon: [],
@@ -585,6 +585,8 @@ function wire() {
     (e) => {
       const el = e.target;
       if (!(el instanceof HTMLInputElement) || el.dataset.ev == null) return;
+      // フォーカス中だけ努力値を回す（未フォーカスならページスクロールを優先）
+      if (document.activeElement !== el) return;
       e.preventDefault();
       const i = Number(el.dataset.ev);
       const m = team().members[i];
