@@ -2,68 +2,11 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#1a2b33" />
-  <title>対戦ボット | ダメ計</title>
-  <link rel="icon" type="image/png" href="./icons/icon.png" />
-  <link rel="stylesheet" href="./css/style.css?v=20260919e" />
-  <link rel="stylesheet" href="./css/tools.css?v=20260919e" />
+  <meta http-equiv="refresh" content="0; url=./team.html" />
+  <title>移動しました</title>
+  <script>location.replace("./team.html");</script>
 </head>
-<body class="tools-page">
-  <div class="app tools-app">
-    <header class="app-header">
-      <img class="app-icon" src="./icons/icon.png" alt="" width="36" height="36" />
-      <div class="titles">
-        <h1>対戦ボット（シングル）</h1>
-        <p>選出3→試合。ダメージはダメ計エンジン共用（効果は順次拡充）</p>
-      </div>
-      <nav class="tool-nav">
-        <a href="./index.html">ダメ計</a>
-        <a href="./team.html">パーティ</a>
-        <a href="./matchup.html">対面</a>
-        <a href="./battle.html" aria-current="page">対戦</a>
-      </nav>
-    </header>
-
-    <div class="battle-shell" id="battle-root">
-      <div class="matchup-pickers" id="setup-panel">
-        <label>自分<select id="mine-select"></select></label>
-        <label>相手（ボット）<select id="foe-select"></select></label>
-        <button type="button" class="icon-btn primary" id="btn-start-select">選出へ</button>
-      </div>
-
-      <section id="select-panel" hidden>
-        <h2 style="font-size:1rem;margin:0 0 6px">自分の選出（3匹）</h2>
-        <div class="select-row" id="select-chips"></div>
-        <div style="margin-top:8px">
-          <button type="button" class="icon-btn primary" id="btn-start-battle" disabled>試合開始</button>
-        </div>
-      </section>
-
-      <section id="fight-panel" hidden>
-        <div class="battle-field">
-          <div class="battle-side foe">
-            <div class="k">相手</div>
-            <div id="foe-name" class="title" style="font-weight:800"></div>
-            <div id="foe-hp-text"></div>
-            <div class="hp-bar" id="foe-hp"><span style="width:100%"></span></div>
-            <div id="foe-status" class="hint"></div>
-          </div>
-          <div class="battle-side">
-            <div class="k">自分</div>
-            <div id="player-name" class="title" style="font-weight:800"></div>
-            <div id="player-hp-text"></div>
-            <div class="hp-bar" id="player-hp"><span style="width:100%"></span></div>
-            <div id="player-status" class="hint"></div>
-          </div>
-        </div>
-        <div class="battle-actions" id="move-actions"></div>
-        <div class="select-row" id="switch-actions" style="margin-top:8px"></div>
-        <div class="battle-log" id="battle-log"></div>
-        <button type="button" class="icon-btn" id="btn-reset" style="margin-top:8px">最初から</button>
-      </section>
-    </div>
-  </div>
-  <script type="module" src="./js/battle-app.js?v=20260919e"></script>
+<body>
+  <p><a href="./team.html">構築ページへ移動</a></p>
 </body>
 </html>

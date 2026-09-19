@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="ja" data-ui="phone">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -10,53 +10,47 @@
   <link rel="apple-touch-icon" href="./icons/icon.png" />
   <link rel="manifest" href="./manifest.webmanifest" />
   <title>ダメ計</title>
-  <link rel="stylesheet" href="./css/style.css?v=20260919i" />
+  <link rel="stylesheet" href="./css/style.css?v=20260920a" />
+  <link rel="stylesheet" href="./css/hub.css?v=20260920a" />
 </head>
-<body>
-  <div class="app screen">
+<body class="tools-page">
+  <div class="hub-app">
     <header class="app-header">
       <img class="app-icon" src="./icons/icon.png" alt="" width="36" height="36" />
       <div class="titles">
         <h1>ダメ計</h1>
-        <p>Lv50 / IV31　努力値合計66・1項32　HP=種族+75+努力 / 他=種族+20+努力×性格</p>
+        <p>攻撃側を1回入れる → 構築6匹まとめて計算</p>
       </div>
-      <div class="header-actions">
-        <nav class="tool-nav compact-nav">
-          <a href="./team.html">パーティ</a>
-          <a href="./matchup.html">対面</a>
-          <a href="./battle.html">対戦</a>
-        </nav>
-        <button type="button" class="icon-btn" id="swap-btn" title="攻撃と防御を入れ替え">攻守交代</button>
-        <button type="button" class="icon-btn" id="history-btn" title="計算履歴">履歴</button>
+      <nav class="hub-nav">
+        <a href="./team.html">構築</a>
+        <a href="./index.html" aria-current="page">ダメ計</a>
+        <div class="ui-toggle" title="表示サイズ">
+          <button type="button" data-ui-set="phone">スマホ</button>
+          <button type="button" data-ui-set="ipad">iPad</button>
+        </div>
         <div class="result-mini" id="result-mini">未計算</div>
-      </div>
+      </nav>
     </header>
 
-    <div class="main-grid">
-      <section class="panel attack" id="panel-atk">
-        <h2>攻撃 <span class="side-tag">ATK</span></h2>
-        <div class="poke-slot" id="atk-slot" tabindex="0" role="button">ここにポケモン</div>
+    <div class="team-toolbar">
+      <label class="field-label" for="team-slot">受け側の構築</label>
+      <select id="team-slot" aria-label="構築選択"></select>
+      <button type="button" class="icon-btn" id="btn-edit-team">構築を編集</button>
+    </div>
+
+    <div class="calc-layout">
+      <section class="calc-attacker">
+        <h2>攻撃側</h2>
+        <div class="poke-slot" id="atk-slot" tabindex="0" role="button">＋ 攻撃ポケモンを選ぶ</div>
         <div id="atk-detail" class="poke-detail" hidden></div>
-      </section>
 
-      <section class="panel defense" id="panel-def">
-        <h2>防御 <span class="side-tag">DEF</span></h2>
-        <div class="poke-slot" id="def-slot" tabindex="0" role="button">ここにポケモン</div>
-        <div id="def-detail" class="poke-detail" hidden></div>
-      </section>
-
-      <section class="panel mid">
-        <div class="mid-row">
+        <div class="mid-row" style="margin-top:8px;display:grid;gap:6px;grid-template-columns:1fr 1fr">
           <button type="button" class="selector-btn" id="move-btn">
             <div class="k">使う技</div>
             <div class="title">技を選択</div>
           </button>
           <button type="button" class="selector-btn" id="atk-item-btn">
             <div class="k">攻撃持ち物</div>
-            <div class="title">なし</div>
-          </button>
-          <button type="button" class="selector-btn" id="def-item-btn">
-            <div class="k">防御持ち物</div>
             <div class="title">なし</div>
           </button>
         </div>
@@ -77,13 +71,6 @@
             <option value="ミストフィールド">ミスト</option>
           </select></label>
           <label>攻異常<select id="atk-status">
-            <option value="なし">なし</option>
-            <option value="やけど">やけど</option>
-            <option value="どく">どく</option>
-            <option value="もうどく">もうどく</option>
-            <option value="まひ">まひ</option>
-          </select></label>
-          <label>防異常<select id="def-status">
             <option value="なし">なし</option>
             <option value="やけど">やけど</option>
             <option value="どく">どく</option>
@@ -112,17 +99,12 @@
           <label><input type="checkbox" id="hpNotFull" />相手HP非満タン</label>
           <label><input type="checkbox" id="movingLast" />後攻(アナライズ)</label>
         </div>
-
-        <div class="speed-panel" id="speed-panel">
-          <div class="speed-title">素早さ比較</div>
-          <div class="speed-body" id="speed-body">攻撃・防御を選ぶと表示</div>
-        </div>
       </section>
 
-      <section class="panel result-panel">
-        <h2>結果</h2>
-        <div class="result-box" id="result">
-          <div class="result-sub">ポケモンと技を選ぶと計算されます</div>
+      <section class="calc-results">
+        <h2 id="results-title">対 構築（6匹まとめて）</h2>
+        <div class="bulk-results" id="bulk-results">
+          <p class="hint">攻撃側のポケモンと技を選ぶと、構築の全員分がここに出ます</p>
         </div>
       </section>
     </div>
@@ -138,6 +120,6 @@
     </div>
   </div>
 
-  <script type="module" src="./js/app.js?v=20260919i"></script>
+  <script type="module" src="./js/calc-app.js?v=20260920a"></script>
 </body>
 </html>
