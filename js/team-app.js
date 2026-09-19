@@ -11,8 +11,8 @@ import {
   totalEv,
   clampEvAssign,
   getNature,
-} from "./stats.js?v=20260920a";
-import { TYPES } from "./types.js?v=20260920a";
+} from "./stats.js?v=20260920b";
+import { TYPES } from "./types.js?v=20260920b";
 import {
   loadTeams,
   replaceTeamAt,
@@ -22,7 +22,7 @@ import {
   applyUiMode,
   isMegaName,
   emptyMember,
-} from "./team-store.js?v=20260920a";
+} from "./team-store.js?v=20260920b";
 import {
   $,
   textMatchesQuery,
@@ -31,8 +31,8 @@ import {
   loadGameData,
   wireModalClose,
   wireUiModeToggle,
-} from "./common.js?v=20260920a";
-import { buildOverviewHtml, downloadOverviewPng } from "./overview.js?v=20260920a";
+} from "./common.js?v=20260920b";
+import { buildOverviewHtml, downloadOverviewPng } from "./overview.js?v=20260920b";
 
 const state = {
   pokemon: [],
@@ -41,6 +41,7 @@ const state = {
   learnsets: {},
   slot: 0,
   teams: loadTeams(),
+  editIndex: null, // null = list, 0-5 = train
 };
 
 function team() {
@@ -98,6 +99,22 @@ function moveSlotHtml(moveName, slotLabel) {
   return `<div class="k">${slotLabel}</div><div class="title">${mv.name}</div><div class="sub"><span class="type-pill type-${mv.type}">${mv.type}</span></div>`;
 }
 
+function showList() {
+  state.editIndex = null;
+  $("view-list").hidden = false;
+  $("view-train").hidden = true;
+  renderList();
+  window.scrollTo(0, 0);
+}
+
+function showTrain(i) {
+  state.editIndex = i;
+  $("view-list").hidden = true;
+  $("view-train").hidden = false;
+  renderTrain();
+  window.scrollTo(0, 0);
+}
+
 function renderSlotTabs() {
   $("slot-tabs").innerHTML = state.teams
     .map((t, i) => {
@@ -110,113 +127,150 @@ function renderSlotTabs() {
     .join("");
 }
 
-function renderMembers() {
+function renderList() {
   const t = team();
   $("team-name").value = t.name || "";
   $("team-memo").value = t.memo || "";
   renderSlotTabs();
 
-  $("member-grid").innerHTML = t.members
+  $("roster-list").innerHTML = t.members
     .map((m, i) => {
       const poke = pokeByName(m.species);
-      const stats = poke ? calcAllStats(poke.baseStats, m.evs || emptyEvs(), m.nature) : null;
-      const evSum = totalEv(m.evs || emptyEvs());
-      const abs = poke?.abilities || [];
-      const mega = isMegaName(m.species);
-      return `
-      <section class="member-card ${poke ? "filled" : "empty"}" data-i="${i}">
-        <div class="member-head">
+      if (!poke) {
+        return `
+        <button type="button" class="roster-row empty" data-open="${i}">
           <span class="slot-no">#${i + 1}</span>
-          <button type="button" class="selector-btn compact" data-pick-poke="${i}">
-            <div class="title">${m.species || "＋ ポケモンを選ぶ"}</div>
-            <div class="sub">${poke ? poke.types.join(" / ") : "タップ"}</div>
-          </button>
-          ${poke ? `<button type="button" class="icon-btn danger" data-clear="${i}" title="枠を空に">消</button>` : ""}
-        </div>
-        ${
-          poke
-            ? `
-        <div class="field-row">
-          <div>
-            <div class="field-label">特性</div>
-            <select data-ability="${i}">${abs
-              .map((a) => `<option value="${a}" ${a === m.ability ? "selected" : ""}>${a}</option>`)
-              .join("")}</select>
-          </div>
-          <div>
-            <div class="field-label">性格</div>
-            <button type="button" class="nature-btn" data-open-nature="${i}">${m.nature}</button>
-            ${natureHintHtml(m.nature)}
-          </div>
-        </div>
-        <button type="button" class="selector-btn compact" data-pick-item="${i}">
-          <div class="k">持ち物${mega ? "（メガ固定）" : ""}</div>
-          <div class="title">${m.item || "なし"}${mega ? " 🔒" : ""}</div>
-        </button>
-        <div class="ev-block">
-          <div class="ev-block-head">
-            <strong>努力値</strong>
-            <span class="ev-sum ${evSum > EV_MAX_TOTAL ? "warn" : ""}" data-ev-sum="${i}">合計 ${evSum} / ${EV_MAX_TOTAL}</span>
-          </div>
-          <div class="ev-list">
-            ${STAT_KEYS.map(
-              (k) => `
-              <div class="ev-line">
-                <div class="ev-line-name">${STAT_LABELS[k]}${natureArrow(k, m.nature)}</div>
-                <input class="ev-num" type="number" inputmode="numeric" min="0" max="${EV_MAX_PER}" step="1" data-ev="${i}" data-stat="${k}" value="${m.evs?.[k] || 0}" />
-                <div class="ev-line-controls">
-                  <button type="button" class="ev-btn" data-ev-set="${i}" data-stat="${k}" data-ev-val="0">0</button>
-                  <button type="button" class="ev-btn primary32" data-ev-set="${i}" data-stat="${k}" data-ev-val="32">32</button>
-                </div>
-                <div class="ev-line-stat">実数 <strong data-stat-v="${i}" data-stat="${k}">${stats[k]}</strong></div>
-              </div>`
-            ).join("")}
-          </div>
-          <div class="ev-presets">
-            <button type="button" class="ev-btn" data-ev-preset="${i}" data-preset="as">AS</button>
-            <button type="button" class="ev-btn" data-ev-preset="${i}" data-preset="cs">CS</button>
-            <button type="button" class="ev-btn" data-ev-preset="${i}" data-preset="hb">HB</button>
-            <button type="button" class="ev-btn" data-ev-preset="${i}" data-preset="hd">HD</button>
-            <button type="button" class="ev-btn" data-ev-preset="${i}" data-preset="clear">全0</button>
-          </div>
-        </div>
-        <div class="move-block">
-          <strong>技</strong>
-          <div class="move-slots">
-            ${[0, 1, 2, 3]
-              .map(
-                (mi) => `
-              <button type="button" class="selector-btn compact move-slot" data-pick-move="${i}" data-mi="${mi}">
-                ${moveSlotHtml(m.moves?.[mi], `技${mi + 1}`)}
-              </button>`
-              )
-              .join("")}
-          </div>
-        </div>`
-            : ""
-        }
-      </section>`;
+          <span class="roster-main">
+            <span class="roster-name">＋ ポケモンを選ぶ</span>
+            <span class="roster-sub">タップして追加・育成</span>
+          </span>
+        </button>`;
+      }
+      const stats = calcAllStats(poke.baseStats, m.evs || emptyEvs(), m.nature);
+      const moves = (m.moves || []).filter(Boolean).join(" / ") || "技未設定";
+      return `
+      <button type="button" class="roster-row" data-open="${i}">
+        <span class="slot-no">#${i + 1}</span>
+        <span class="roster-main">
+          <span class="roster-name">${poke.name}</span>
+          <span class="roster-sub">${poke.types.join("/")}　${m.item || "なし"}　${m.nature}</span>
+          <span class="roster-sub">H${stats.hp} A${stats.atk} B${stats.def} C${stats.spa} D${stats.spd} S${stats.spe}</span>
+          <span class="roster-sub">${moves}</span>
+        </span>
+        <span class="roster-go">育成 →</span>
+      </button>`;
     })
     .join("");
+}
+
+function renderTrain() {
+  const i = state.editIndex;
+  const m = team().members[i];
+  const poke = pokeByName(m.species);
+  $("train-title").textContent = poke ? `#${i + 1} ${poke.name}` : `#${i + 1} 新規`;
+
+  if (!poke) {
+    $("train-body").innerHTML = `
+      <div class="train-empty">
+        <p>この枠は空です。ポケモンを選んでください。</p>
+        <button type="button" class="icon-btn primary" data-pick-poke="${i}">ポケモンを選ぶ</button>
+      </div>`;
+    return;
+  }
+
+  const stats = calcAllStats(poke.baseStats, m.evs || emptyEvs(), m.nature);
+  const evSum = totalEv(m.evs || emptyEvs());
+  const abs = poke.abilities || [];
+  const mega = isMegaName(m.species);
+
+  $("train-body").innerHTML = `
+    <section class="train-card">
+      <button type="button" class="selector-btn" data-pick-poke="${i}">
+        <div class="k">ポケモン（変更）</div>
+        <div class="title">${poke.name}</div>
+        <div class="sub">${poke.types.join(" / ")}　種族 H${poke.baseStats.hp} A${poke.baseStats.atk} B${poke.baseStats.def} C${poke.baseStats.spa} D${poke.baseStats.spd} S${poke.baseStats.spe}</div>
+      </button>
+
+      <div class="field-row">
+        <div>
+          <div class="field-label">特性</div>
+          <select data-ability="${i}">${abs
+            .map((a) => `<option value="${a}" ${a === m.ability ? "selected" : ""}>${a}</option>`)
+            .join("")}</select>
+        </div>
+        <div>
+          <div class="field-label">性格</div>
+          <button type="button" class="nature-btn" data-open-nature="${i}">${m.nature}</button>
+          ${natureHintHtml(m.nature)}
+        </div>
+      </div>
+
+      <button type="button" class="selector-btn compact" data-pick-item="${i}">
+        <div class="k">持ち物${mega ? "（メガ固定）" : ""}</div>
+        <div class="title">${m.item || "なし"}${mega ? " 🔒" : ""}</div>
+      </button>
+
+      <div class="ev-block">
+        <div class="ev-block-head">
+          <strong>努力値</strong>
+          <span class="ev-sum ${evSum > EV_MAX_TOTAL ? "warn" : ""}" data-ev-sum="${i}">合計 ${evSum} / ${EV_MAX_TOTAL}</span>
+        </div>
+        <div class="ev-list">
+          ${STAT_KEYS.map(
+            (k) => `
+            <div class="ev-line">
+              <div class="ev-line-name">${STAT_LABELS[k]}${natureArrow(k, m.nature)}</div>
+              <input class="ev-num" type="number" inputmode="numeric" min="0" max="${EV_MAX_PER}" step="1" data-ev="${i}" data-stat="${k}" value="${m.evs?.[k] || 0}" />
+              <div class="ev-line-controls">
+                <button type="button" class="ev-btn" data-ev-set="${i}" data-stat="${k}" data-ev-val="0">0</button>
+                <button type="button" class="ev-btn primary32" data-ev-set="${i}" data-stat="${k}" data-ev-val="32">32</button>
+              </div>
+              <div class="ev-line-stat">実数 <strong data-stat-v="${i}" data-stat="${k}">${stats[k]}</strong></div>
+            </div>`
+          ).join("")}
+        </div>
+        <div class="ev-presets">
+          <button type="button" class="ev-btn" data-ev-preset="${i}" data-preset="as">AS</button>
+          <button type="button" class="ev-btn" data-ev-preset="${i}" data-preset="cs">CS</button>
+          <button type="button" class="ev-btn" data-ev-preset="${i}" data-preset="hb">HB</button>
+          <button type="button" class="ev-btn" data-ev-preset="${i}" data-preset="hd">HD</button>
+          <button type="button" class="ev-btn" data-ev-preset="${i}" data-preset="clear">全0</button>
+        </div>
+      </div>
+
+      <div class="move-block">
+        <strong>技</strong>
+        <div class="move-slots">
+          ${[0, 1, 2, 3]
+            .map(
+              (mi) => `
+            <button type="button" class="selector-btn compact move-slot" data-pick-move="${i}" data-mi="${mi}">
+              ${moveSlotHtml(m.moves?.[mi], `技${mi + 1}`)}
+            </button>`
+            )
+            .join("")}
+        </div>
+      </div>
+    </section>`;
 }
 
 function refreshEvDisplay(i) {
   const m = team().members[i];
   const poke = pokeByName(m.species);
   if (!poke) return;
-  const card = document.querySelector(`.member-card[data-i="${i}"]`);
-  if (!card) return;
+  const root = $("train-body");
+  if (!root) return;
   const stats = calcAllStats(poke.baseStats, m.evs || emptyEvs(), m.nature);
   const evSum = totalEv(m.evs || emptyEvs());
-  const sumEl = card.querySelector(`[data-ev-sum="${i}"]`);
+  const sumEl = root.querySelector(`[data-ev-sum="${i}"]`);
   if (sumEl) {
     sumEl.textContent = `合計 ${evSum} / ${EV_MAX_TOTAL}`;
     sumEl.classList.toggle("warn", evSum > EV_MAX_TOTAL);
   }
   for (const k of STAT_KEYS) {
-    const el = card.querySelector(`[data-stat-v="${i}"][data-stat="${k}"]`);
+    const el = root.querySelector(`[data-stat-v="${i}"][data-stat="${k}"]`);
     if (el) el.textContent = String(stats[k]);
-    const input = card.querySelector(`input[data-ev="${i}"][data-stat="${k}"]`);
+    const input = root.querySelector(`input[data-ev="${i}"][data-stat="${k}"]`);
     if (input && document.activeElement !== input) input.value = String(m.evs?.[k] || 0);
   }
 }
@@ -243,14 +297,14 @@ function applyEvPreset(i, preset) {
   }
   m.evs = evs;
   persist();
-  renderMembers();
+  renderTrain();
 }
 
 function openPokePicker(i) {
   openModal(
     "ポケモン",
     `<div class="list-filters">
-      <input type="search" id="q" placeholder="名前検索" />
+      <input type="search" id="q" placeholder="名前検索" autofocus />
       <select id="poke-type"><option value="">タイプ</option>${TYPES.map((t) => `<option value="${t}">${t}</option>`).join("")}</select>
     </div>
     <div id="list"></div>`
@@ -274,13 +328,14 @@ function openPokePicker(i) {
       el.addEventListener("click", () => {
         const poke = pokeByName(el.dataset.name);
         const m = team().members[i];
+        const same = m.species === poke.name;
         m.species = poke.name;
         m.ability = poke.abilities?.[0] || "";
-        m.moves = ["", "", "", ""];
+        if (!same) m.moves = ["", "", "", ""];
         syncMegaItem(m);
         persist();
         closeModal();
-        renderMembers();
+        showTrain(i);
       });
     });
   };
@@ -298,7 +353,7 @@ function openItemPicker(i) {
   );
   const render = () => {
     const q = $("q").value;
-    const rows = [{ name: "なし", effect: "" }, ...state.items]
+    $("list").innerHTML = [{ name: "なし", effect: "" }, ...state.items]
       .filter((it) => textMatchesQuery(it.name, q) || textMatchesQuery(it.effect || "", q))
       .slice(0, 100)
       .map(
@@ -307,13 +362,12 @@ function openItemPicker(i) {
       </button>`
       )
       .join("");
-    $("list").innerHTML = rows;
     $("list").querySelectorAll("[data-name]").forEach((el) => {
       el.addEventListener("click", () => {
         m.item = el.dataset.name;
         persist();
         closeModal();
-        renderMembers();
+        renderTrain();
       });
     });
   };
@@ -337,7 +391,7 @@ function openMovePicker(i, mi) {
     const typ = $("move-type").value;
     let list = state.moves;
     if (allowed.length) list = list.filter((mv) => allowed.includes(mv.name));
-    const rows = [
+    $("list").innerHTML = [
       `<button type="button" class="list-item" data-name=""><div>（なし）</div></button>`,
       ...list
         .filter((mv) => textMatchesQuery(mv.name, q))
@@ -350,13 +404,12 @@ function openMovePicker(i, mi) {
         </button>`
         ),
     ].join("");
-    $("list").innerHTML = rows;
     $("list").querySelectorAll("[data-name]").forEach((el) => {
       el.addEventListener("click", () => {
         m.moves[mi] = el.dataset.name || "";
         persist();
         closeModal();
-        renderMembers();
+        renderTrain();
       });
     });
   };
@@ -392,7 +445,7 @@ function openNaturePicker(i) {
       m.nature = btn.dataset.nature;
       persist();
       closeModal();
-      renderMembers();
+      renderTrain();
     });
   });
 }
@@ -416,6 +469,12 @@ function showOverview() {
   });
 }
 
+function saveTeamMeta() {
+  team().name = ($("team-name").value || "").trim() || `構築${state.slot + 1}`;
+  team().memo = $("team-memo").value || "";
+  persist();
+}
+
 function wire() {
   wireModalClose();
   wireUiModeToggle();
@@ -423,18 +482,14 @@ function wire() {
   $("slot-tabs").addEventListener("click", (e) => {
     const btn = e.target.closest("[data-slot]");
     if (!btn) return;
-    // save current fields first
-    team().name = ($("team-name").value || "").trim() || `構築${state.slot + 1}`;
-    team().memo = $("team-memo").value || "";
-    persist();
+    saveTeamMeta();
     state.slot = setActiveSlot(Number(btn.dataset.slot));
     state.teams = loadTeams();
-    renderMembers();
+    showList();
   });
 
   $("team-name").addEventListener("change", () => {
-    team().name = ($("team-name").value || "").trim() || `構築${state.slot + 1}`;
-    persist();
+    saveTeamMeta();
     renderSlotTabs();
   });
   $("team-memo").addEventListener("input", () => {
@@ -444,8 +499,7 @@ function wire() {
   $("team-memo").addEventListener("blur", () => persist());
 
   $("btn-save").addEventListener("click", () => {
-    team().name = ($("team-name").value || "").trim() || `構築${state.slot + 1}`;
-    team().memo = $("team-memo").value || "";
+    saveTeamMeta();
     team().members.forEach(syncMegaItem);
     persist();
     toast("保存しました");
@@ -456,31 +510,46 @@ function wire() {
     if (!confirm("この構築を空にしますか？")) return;
     state.teams[state.slot] = clearTeamAt(state.slot);
     state.teams = loadTeams();
-    renderMembers();
+    showList();
     toast("クリアしました");
   });
 
   $("btn-overview").addEventListener("click", () => {
-    team().name = ($("team-name").value || "").trim() || `構築${state.slot + 1}`;
-    team().memo = $("team-memo").value || "";
-    persist();
+    saveTeamMeta();
     showOverview();
   });
 
-  $("member-grid").addEventListener("click", (e) => {
+  $("roster-list").addEventListener("click", (e) => {
+    const row = e.target.closest("[data-open]");
+    if (!row) return;
+    const i = Number(row.dataset.open);
+    const m = team().members[i];
+    if (!m.species) openPokePicker(i);
+    else showTrain(i);
+  });
+
+  $("btn-back-list").addEventListener("click", () => {
+    persist();
+    showList();
+  });
+
+  $("btn-remove-member").addEventListener("click", () => {
+    if (state.editIndex == null) return;
+    if (!confirm("この枠を空にしますか？")) return;
+    team().members[state.editIndex] = emptyMember();
+    persist();
+    showList();
+  });
+
+  $("train-body").addEventListener("click", (e) => {
     const t = e.target.closest(
-      "[data-pick-poke],[data-pick-item],[data-pick-move],[data-clear],[data-open-nature],[data-ev-set],[data-ev-preset]"
+      "[data-pick-poke],[data-pick-item],[data-pick-move],[data-open-nature],[data-ev-set],[data-ev-preset]"
     );
     if (!t) return;
     if (t.dataset.pickPoke != null) openPokePicker(Number(t.dataset.pickPoke));
     if (t.dataset.pickItem != null) openItemPicker(Number(t.dataset.pickItem));
     if (t.dataset.pickMove != null) openMovePicker(Number(t.dataset.pickMove), Number(t.dataset.mi));
     if (t.dataset.openNature != null) openNaturePicker(Number(t.dataset.openNature));
-    if (t.dataset.clear != null) {
-      team().members[Number(t.dataset.clear)] = emptyMember();
-      persist();
-      renderMembers();
-    }
     if (t.dataset.evSet != null) {
       const i = Number(t.dataset.evSet);
       const m = team().members[i];
@@ -491,7 +560,7 @@ function wire() {
     if (t.dataset.evPreset != null) applyEvPreset(Number(t.dataset.evPreset), t.dataset.preset);
   });
 
-  $("member-grid").addEventListener("change", (e) => {
+  $("train-body").addEventListener("change", (e) => {
     const el = e.target;
     if (!(el instanceof HTMLElement)) return;
     if (el.dataset.ability != null) {
@@ -500,7 +569,7 @@ function wire() {
     }
   });
 
-  $("member-grid").addEventListener("input", (e) => {
+  $("train-body").addEventListener("input", (e) => {
     const el = e.target;
     if (!(el instanceof HTMLElement) || el.dataset.ev == null) return;
     const i = Number(el.dataset.ev);
@@ -511,7 +580,7 @@ function wire() {
     refreshEvDisplay(i);
   });
 
-  $("member-grid").addEventListener(
+  $("train-body").addEventListener(
     "wheel",
     (e) => {
       const el = e.target;
@@ -520,8 +589,7 @@ function wire() {
       const i = Number(el.dataset.ev);
       const m = team().members[i];
       const cur = Number(el.value) || 0;
-      const next = cur + (e.deltaY < 0 ? 1 : -1);
-      m.evs = clampEvAssign(m.evs || emptyEvs(), el.dataset.stat, next);
+      m.evs = clampEvAssign(m.evs || emptyEvs(), el.dataset.stat, cur + (e.deltaY < 0 ? 1 : -1));
       el.value = String(m.evs[el.dataset.stat] || 0);
       persist();
       refreshEvDisplay(i);
@@ -536,7 +604,8 @@ async function main() {
   Object.assign(state, data);
   state.slot = getActiveSlot();
   state.teams = loadTeams();
-  renderMembers();
+  // bump import versions in store
+  showList();
   wire();
 }
 
