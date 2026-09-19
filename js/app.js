@@ -15,9 +15,9 @@ import {
   totalEv,
   clampEvAssign,
   getNature,
-} from "./stats.js";
-import { TYPES } from "./types.js";
-import { calculateDamage } from "./damage.js";
+} from "./stats.js?v=20260919a";
+import { TYPES } from "./types.js?v=20260919a";
+import { calculateDamage } from "./damage.js?v=20260919a";
 
 const HISTORY_KEY = "damekei-history-v1";
 const HISTORY_MAX = 40;
@@ -669,82 +669,85 @@ function updateItemBtns() {
 
 function recalc() {
   const box = $("result");
-  if (!state.atk || !state.def || !state.move) {
-    box.innerHTML = `<div class="result-sub">ポケモンと技を選ぶと計算されます</div>`;
-    $("result-mini").textContent = "未計算";
-    return;
-  }
+  if (!box) return;
+  try {
+    if (!state.atk || !state.def || !state.move) {
+      box.innerHTML = `<div class="result-sub">ポケモンと技を選ぶと計算されます</div>`;
+      if ($("result-mini")) $("result-mini").textContent = "未計算";
+      return;
+    }
 
-  const result = calculateDamage({
-    attackerPoke: state.atk,
-    defenderPoke: state.def,
-    move: state.move,
-    attackerEvs: state.atkEvs,
-    defenderEvs: state.defEvs,
-    attackerNature: state.atkNature,
-    defenderNature: state.defNature,
-    attackerAbility: state.atkAbility,
-    defenderAbility: state.defAbility,
-    attackerItem: state.atkItem,
-    defenderItem: state.defItem,
-    attackerRanks: state.atkRanks,
-    defenderRanks: state.defRanks,
-    attackerStatus: $("atk-status").value,
-    defenderStatus: $("def-status").value,
-    weather: $("weather").value,
-    field: $("field").value,
-    screens: {
-      reflect: $("reflect").checked,
-      lightScreen: $("lightScreen").checked,
-      auroraVeil: $("auroraVeil").checked,
-    },
-    critical: $("critical").checked,
-    gravity: $("gravity").checked,
-    helpBoost: $("helpBoost").checked,
-    stealthRock: $("stealthRock").checked,
-    spikes: Number($("spikes").value),
-    leechSeed: $("leechSeed").checked,
-    burn: $("burnChip").checked || $("def-status").value === "やけど",
-    poison: $("poisonChip").checked
-      ? $("def-status").value === "もうどく"
-        ? "もうどく"
-        : "どく"
-      : $("def-status").value === "どく" || $("def-status").value === "もうどく"
-        ? $("def-status").value
-        : null,
-    disguiseBroken: false,
-    hpNotFull: $("hpNotFull").checked,
-    movingLast: $("movingLast").checked,
-  });
+    const result = calculateDamage({
+      attackerPoke: state.atk,
+      defenderPoke: state.def,
+      move: state.move,
+      attackerEvs: state.atkEvs,
+      defenderEvs: state.defEvs,
+      attackerNature: state.atkNature,
+      defenderNature: state.defNature,
+      attackerAbility: state.atkAbility,
+      defenderAbility: state.defAbility,
+      attackerItem: state.atkItem || "なし",
+      defenderItem: state.defItem || "なし",
+      attackerRanks: state.atkRanks,
+      defenderRanks: state.defRanks,
+      attackerStatus: $("atk-status")?.value || "なし",
+      defenderStatus: $("def-status")?.value || "なし",
+      weather: $("weather")?.value || "なし",
+      field: $("field")?.value || "なし",
+      screens: {
+        reflect: !!$("reflect")?.checked,
+        lightScreen: !!$("lightScreen")?.checked,
+        auroraVeil: !!$("auroraVeil")?.checked,
+      },
+      critical: !!$("critical")?.checked,
+      gravity: !!$("gravity")?.checked,
+      helpBoost: !!$("helpBoost")?.checked,
+      stealthRock: !!$("stealthRock")?.checked,
+      spikes: Number($("spikes")?.value || 0),
+      leechSeed: !!$("leechSeed")?.checked,
+      burn: !!$("burnChip")?.checked || $("def-status")?.value === "やけど",
+      poison: $("poisonChip")?.checked
+        ? $("def-status")?.value === "もうどく"
+          ? "もうどく"
+          : "どく"
+        : $("def-status")?.value === "どく" || $("def-status")?.value === "もうどく"
+          ? $("def-status").value
+          : null,
+      disguiseBroken: false,
+      hpNotFull: !!$("hpNotFull")?.checked,
+      movingLast: !!$("movingLast")?.checked,
+    });
 
-  if (result.error) {
-    box.innerHTML = `<div class="result-sub">${result.error}</div>
+    if (result.error) {
+      box.innerHTML = `<div class="result-sub">${result.error}</div>
       <details class="calc-details"><summary>計算詳細</summary><ul>${(result.details || [])
         .map((d) => `<li>${d}</li>`)
         .join("")}</ul></details>`;
-    $("result-mini").textContent = result.error;
-    return;
-  }
+      if ($("result-mini")) $("result-mini").textContent = result.error;
+      return;
+    }
 
-  let effClass = "";
-  if (result.typeMult === 0) effClass = "immune";
-  else if (result.typeMult > 1) effClass = "";
-  else if (result.typeMult < 1) effClass = "resist";
+    let effClass = "";
+    if (result.typeMult === 0) effClass = "immune";
+    else if (result.typeMult > 1) effClass = "";
+    else if (result.typeMult < 1) effClass = "resist";
 
-  function rowHtml(pack, tone) {
-    if (!pack) return "";
-    const healNote =
-      pack.healPerTurn > 0
-        ? `<span class="result-heal">${pack.label} ${pack.healPerTurn} 回復</span>`
-        : `<span class="result-heal">${pack.label}</span>`;
-    const barPct = Math.min(100, pack.percentMax);
-    const barMin = Math.min(100, pack.percentMin);
-    const koClass = pack.koText === "倒せない"
-      ? "ko-fail"
-      : pack.koGuaranteed
-        ? "ko-sure"
-        : "ko-rand";
-    return `
+    function rowHtml(pack, tone) {
+      if (!pack) return "";
+      const healNote =
+        pack.healPerTurn > 0
+          ? `<span class="result-heal">${pack.label} ${pack.healPerTurn} 回復</span>`
+          : `<span class="result-heal">${pack.label}</span>`;
+      const barPct = Math.min(100, pack.percentMax);
+      const barMin = Math.min(100, pack.percentMin);
+      const koClass =
+        pack.koText === "倒せない"
+          ? "ko-fail"
+          : pack.koGuaranteed
+            ? "ko-sure"
+            : "ko-rand";
+      return `
       <div class="dmg-row ${tone}">
         <div class="dmg-row-main">
           <span class="dmg-pct">${pack.percentMin} ~ ${pack.percentMax}%</span>
@@ -757,32 +760,33 @@ function recalc() {
         </div>
         ${healNote}
       </div>`;
-  }
+    }
 
-  const normal = result.normal;
-  const crit = result.critical;
-  const primary = result.critical && $("critical").checked ? result.critical : result.normal || result;
-  const main = `${primary.percentMin}％～${primary.percentMax}％　${primary.koText}`;
-  const dualRows =
-    normal || crit
-      ? `<div class="dmg-rows">${rowHtml(normal, "tone-normal")}${rowHtml(crit, "tone-crit")}</div>`
-      : `<div class="result-main">${main}</div>
+    const normal = result.normal;
+    const crit = result.critical;
+    const primary =
+      result.critical && $("critical")?.checked ? result.critical : result.normal || result;
+    const main = `${primary.percentMin}％～${primary.percentMax}％　${primary.koText}`;
+    const dualRows =
+      normal || crit
+        ? `<div class="dmg-rows">${rowHtml(normal, "tone-normal")}${rowHtml(crit, "tone-crit")}</div>`
+        : `<div class="result-main">${main}</div>
          <div class="result-sub">${primary.min}～${primary.max} ダメージ / 相手HP ${result.defenderHp}</div>`;
 
-  const staminaNote = result.staminaKoNote
-    ? `<div class="result-sub">${result.staminaKoNote}</div>`
-    : "";
+    const staminaNote = result.staminaKoNote
+      ? `<div class="result-sub">${result.staminaKoNote}</div>`
+      : "";
 
-  const chipHtml = (result.chip || []).length
-    ? `<ul class="chip-list">${result.chip
-        .map((c) => {
-          const sign = c.damage < 0 ? "回復" : "ダメージ";
-          return `<li>${c.name}: ${Math.abs(c.damage)} ${sign}${c.note ? `（${c.note}）` : ""}</li>`;
-        })
-        .join("")}</ul>`
-    : "";
+    const chipHtml = (result.chip || []).length
+      ? `<ul class="chip-list">${result.chip
+          .map((c) => {
+            const sign = c.damage < 0 ? "回復" : "ダメージ";
+            return `<li>${c.name}: ${Math.abs(c.damage)} ${sign}${c.note ? `（${c.note}）` : ""}</li>`;
+          })
+          .join("")}</ul>`
+      : "";
 
-  box.innerHTML = `
+    box.innerHTML = `
     <div class="result-sub">${state.atk.name} の ${state.move.name} → ${state.def.name}</div>
     ${dualRows}
     ${staminaNote}
@@ -790,51 +794,69 @@ function recalc() {
     ${chipHtml}
     <details class="calc-details">
       <summary>計算詳細</summary>
-      <ul>${result.details.map((d) => `<li>${d}</li>`).join("")}</ul>
+      <ul>${(result.details || []).map((d) => `<li>${d}</li>`).join("")}</ul>
       <p class="result-sub">乱数一覧: ${(primary.rolls || result.rolls || []).join(", ")}</p>
     </details>
   `;
-  $("result-mini").textContent = main;
+    if ($("result-mini")) $("result-mini").textContent = main;
 
-  const fingerprint = [
-    state.atk.name,
-    state.def.name,
-    state.move.name,
-    main,
-    crit?.koText || "",
-    crit ? `${crit.percentMin}-${crit.percentMax}` : "",
-  ].join("|");
-  if (fingerprint !== state.lastHistoryFingerprint) {
-    state.lastHistoryFingerprint = fingerprint;
-    pushHistoryEntry({
-      fingerprint,
-      ts: Date.now(),
-      atkName: state.atk.name,
-      defName: state.def.name,
-      moveName: state.move.name,
-      summary: main,
-      critSummary: crit
-        ? `${crit.percentMin}％～${crit.percentMax}％ ${crit.koText}`
-        : "",
-    });
+    const fingerprint = [
+      state.atk.name,
+      state.def.name,
+      state.move.name,
+      main,
+      crit?.koText || "",
+      crit ? `${crit.percentMin}-${crit.percentMax}` : "",
+    ].join("|");
+    if (fingerprint !== state.lastHistoryFingerprint) {
+      state.lastHistoryFingerprint = fingerprint;
+      try {
+        pushHistoryEntry({
+          fingerprint,
+          ts: Date.now(),
+          atkName: state.atk.name,
+          defName: state.def.name,
+          moveName: state.move.name,
+          summary: main,
+          critSummary: crit
+            ? `${crit.percentMin}％～${crit.percentMax}％ ${crit.koText}`
+            : "",
+        });
+      } catch (histErr) {
+        console.warn("[ダメ計] history save failed", histErr);
+      }
+    }
+  } catch (err) {
+    console.error("[ダメ計] recalc failed", err);
+    box.innerHTML = `<div class="result-sub">計算エラー: ${err.message}</div>`;
+    if ($("result-mini")) $("result-mini").textContent = "エラー";
   }
 }
 
 function wire() {
-  $("atk-slot").addEventListener("click", () => openPokemonPicker("atk"));
-  $("def-slot").addEventListener("click", () => openPokemonPicker("def"));
-  $("atk-slot").addEventListener("keydown", (e) => {
+  const on = (id, event, handler) => {
+    const el = $(id);
+    if (!el) {
+      console.warn(`[ダメ計] missing #${id}, skip ${event}`);
+      return;
+    }
+    el.addEventListener(event, handler);
+  };
+
+  on("atk-slot", "click", () => openPokemonPicker("atk"));
+  on("def-slot", "click", () => openPokemonPicker("def"));
+  on("atk-slot", "keydown", (e) => {
     if (e.key === "Enter" || e.key === " ") openPokemonPicker("atk");
   });
-  $("def-slot").addEventListener("keydown", (e) => {
+  on("def-slot", "keydown", (e) => {
     if (e.key === "Enter" || e.key === " ") openPokemonPicker("def");
   });
-  $("move-btn").addEventListener("click", openMovePicker);
-  $("atk-item-btn").addEventListener("click", () => openItemPicker("atk"));
-  $("def-item-btn").addEventListener("click", () => openItemPicker("def"));
-  $("history-btn").addEventListener("click", openHistoryModal);
-  $("modal-close").addEventListener("click", closeModal);
-  $("modal").addEventListener("click", (e) => {
+  on("move-btn", "click", openMovePicker);
+  on("atk-item-btn", "click", () => openItemPicker("atk"));
+  on("def-item-btn", "click", () => openItemPicker("def"));
+  on("history-btn", "click", openHistoryModal);
+  on("modal-close", "click", closeModal);
+  on("modal", "click", (e) => {
     if (e.target === $("modal")) closeModal();
   });
 
@@ -859,9 +881,7 @@ function wire() {
     "spikes",
     "hpNotFull",
     "movingLast",
-  ].forEach((id) => {
-    $(id).addEventListener("change", recalc);
-  });
+  ].forEach((id) => on(id, "change", recalc));
 }
 
 async function main() {
