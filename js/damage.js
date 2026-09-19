@@ -1,5 +1,5 @@
-import { typeEffectiveness, effectivenessLabel } from "./types.js?v=20260919a";
-import { applyRank, calcAllStats } from "./stats.js?v=20260919a";
+import { typeEffectiveness, effectivenessLabel } from "./types.js?v=20260919b";
+import { applyRank, calcAllStats } from "./stats.js?v=20260919b";
 import {
   isProteanLike,
   effectiveWeatherForAttacker,
@@ -10,7 +10,7 @@ import {
   criticalBlocked,
   criticalMultiplier,
   ignoresAbility,
-} from "./abilities.js?v=20260919a";
+} from "./abilities.js?v=20260919b";
 
 const LEVEL = 50;
 

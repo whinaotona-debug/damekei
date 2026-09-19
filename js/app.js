@@ -15,9 +15,9 @@ import {
   totalEv,
   clampEvAssign,
   getNature,
-} from "./stats.js?v=20260919a";
-import { TYPES } from "./types.js?v=20260919a";
-import { calculateDamage } from "./damage.js?v=20260919a";
+} from "./stats.js?v=20260919b";
+import { TYPES } from "./types.js?v=20260919b";
+import { calculateDamage } from "./damage.js?v=20260919b";
 
 const HISTORY_KEY = "damekei-history-v1";
 const HISTORY_MAX = 40;
@@ -26,6 +26,7 @@ const state = {
   pokemon: [],
   moves: [],
   items: [],
+  learnsets: {},
   atk: null,
   def: null,
   move: null,
@@ -41,6 +42,36 @@ const state = {
   defRanks: emptyRanks(),
   lastHistoryFingerprint: "",
 };
+
+/** メガニウム本体は除外。メガメガニウムやメガリザードンX等は true */
+function isMegaPokemon(poke) {
+  const n = poke?.name || "";
+  if (!n || n === "メガニウム") return false;
+  return n.startsWith("メガ");
+}
+
+function learnableMovesFor(poke) {
+  if (!poke) return null;
+  const list = state.learnsets[poke.name];
+  if (!list || !list.length) return null;
+  return list;
+}
+
+function syncItemForSide(side) {
+  const poke = state[side];
+  const key = side === "atk" ? "atkItem" : "defItem";
+  if (isMegaPokemon(poke)) state[key] = "メガストーン";
+  else if (state[key] === "メガストーン") state[key] = "なし";
+}
+
+function clearMoveIfNotLearnable() {
+  if (!state.move || !state.atk) return;
+  const allowed = learnableMovesFor(state.atk);
+  if (allowed && !allowed.includes(state.move.name)) {
+    state.move = null;
+    updateMoveBtn();
+  }
+}
 
 /** ひらがな↔カタカナを揃えて部分一致（「りざーどん」→リザードン） */
 function toKatakana(str) {
@@ -161,14 +192,16 @@ function openHistoryModal() {
 }
 
 async function loadData() {
-  const [pokemon, moves, items] = await Promise.all([
+  const [pokemon, moves, items, learnsets] = await Promise.all([
     fetch("./data/pokemon.json").then((r) => r.json()),
     fetch("./data/moves.json").then((r) => r.json()),
     fetch("./data/items.json").then((r) => r.json()),
+    fetch("./data/learnsets.json").then((r) => r.json()),
   ]);
   state.pokemon = pokemon;
   state.moves = moves;
   state.items = items;
+  state.learnsets = learnsets;
 }
 
 function $(id) {
@@ -463,7 +496,10 @@ function selectPokemon(side, poke) {
   state[`${side}Ranks`] = emptyRanks();
   if (side === "atk") state.atkNature = "いじっぱり";
   else state.defNature = "ずぶとい";
+  syncItemForSide(side);
+  if (side === "atk") clearMoveIfNotLearnable();
   renderSlot(side);
+  updateItemBtns();
   closeModal();
   recalc();
 }
@@ -537,7 +573,13 @@ function openPokemonPicker(side) {
 }
 
 function openMovePicker() {
+  if (!state.atk) {
+    openModal("使う技", `<div class="history-empty">先に攻撃側のポケモンを選んでください</div>`);
+    return;
+  }
   const atkTypes = state.atk?.types || [];
+  const learnable = learnableMovesFor(state.atk);
+  const learnableSet = learnable ? new Set(learnable) : null;
   openModal("使う技", `
     <div class="filters">
       <input type="text" id="move-q" placeholder="技名検索（ひらがな可）" autocomplete="off" />
@@ -553,7 +595,12 @@ function openMovePicker() {
           <option value="変化">変化</option>
         </select>
       </div>
-      <label class="check-inline"><input type="checkbox" id="move-stab-only" ${atkTypes.length ? "checked" : ""} ${atkTypes.length ? "" : "disabled"} /> 攻撃側タイプ一致技のみ（覚え技データ未提供のため近似）</label>
+      <label class="check-inline"><input type="checkbox" id="move-stab-only" ${atkTypes.length ? "checked" : ""} ${atkTypes.length ? "" : "disabled"} /> 攻撃側タイプ一致技のみ</label>
+      <div class="ability-note">${
+        learnableSet
+          ? `${state.atk.name} の覚え技 ${learnableSet.size} 件（チャンピオンズデータ準拠）`
+          : "覚え技データなし → 全技から選択"
+      }</div>
     </div>
     <div class="list" id="move-list"></div>
   `);
@@ -564,6 +611,7 @@ function openMovePicker() {
     const cat = $("move-cat").value;
     const stabOnly = $("move-stab-only")?.checked;
     let list = state.moves.filter((m) => {
+      if (learnableSet && !learnableSet.has(m.name)) return false;
       if (q && !textMatchesQuery(m.name, q)) return false;
       if (type && m.type !== type) return false;
       if (cat && m.category !== cat) return false;
@@ -578,15 +626,19 @@ function openMovePicker() {
         return as - bs || a.name.localeCompare(b.name, "ja");
       });
     }
-    $("move-list").innerHTML = list
-      .slice(0, 250)
-      .map((m) => `
+    $("move-list").innerHTML = list.length
+      ? list
+          .slice(0, 300)
+          .map(
+            (m) => `
         <div class="list-item" data-name="${m.name}">
           <div class="n">${m.name}${atkTypes.includes(m.type) ? " ★" : ""}</div>
           <div class="s">${m.type} / ${m.category}　威力 ${m.power ?? "-"}　命中 ${m.accuracy ?? "-"}　PP ${m.pp}
           <br/>${(m.effect || m.target || "").slice(0, 80)}</div>
-        </div>`)
-      .join("");
+        </div>`
+          )
+          .join("")
+      : `<div class="history-empty">条件に合う覚え技がありません</div>`;
     $("move-list").querySelectorAll(".list-item").forEach((el) => {
       el.addEventListener("click", () => {
         state.move = state.moves.find((x) => x.name === el.dataset.name);
@@ -605,6 +657,18 @@ function openMovePicker() {
 }
 
 function openItemPicker(side) {
+  const poke = state[side];
+  if (isMegaPokemon(poke)) {
+    openModal(side === "atk" ? "攻撃側の持ち物" : "防御側の持ち物", `
+      <div class="history-empty">
+        ${poke.name} はメガシンカ済みのため<br/>
+        持ち物は <strong>メガストーン</strong> 固定です
+      </div>
+    `);
+    state[side === "atk" ? "atkItem" : "defItem"] = "メガストーン";
+    updateItemBtns();
+    return;
+  }
   openModal(side === "atk" ? "攻撃側の持ち物" : "防御側の持ち物", `
     <div class="filters">
       <input type="text" id="item-q" placeholder="名前検索（ひらがな可）" autocomplete="off" />
@@ -622,6 +686,7 @@ function openItemPicker(side) {
     const q = ($("item-q").value || "").trim();
     const cat = $("item-cat").value;
     const list = state.items.filter((it) => {
+      if (it.name === "メガストーン") return false;
       if (q && !textMatchesQuery(it.name, q)) return false;
       if (cat && it.category !== cat) return false;
       return true;
@@ -652,7 +717,14 @@ function openItemPicker(side) {
 function updateMoveBtn() {
   const btn = $("move-btn");
   if (!state.move) {
-    btn.innerHTML = `<div class="title">技を選択</div><div class="sub">名前・タイプ・分類で検索</div>`;
+    const n = learnableMovesFor(state.atk)?.length;
+    btn.innerHTML = `<div class="title">技を選択</div><div class="sub">${
+      state.atk
+        ? n != null
+          ? `覚え技 ${n} 件から選択`
+          : "名前・タイプ・分類で検索"
+        : "先に攻撃側ポケモンを選択"
+    }</div>`;
     return;
   }
   const m = state.move;
@@ -661,10 +733,18 @@ function updateMoveBtn() {
 }
 
 function updateItemBtns() {
+  const atkMega = isMegaPokemon(state.atk);
+  const defMega = isMegaPokemon(state.def);
+  if (atkMega) state.atkItem = "メガストーン";
+  if (defMega) state.defItem = "メガストーン";
   const atk = state.items.find((x) => x.name === state.atkItem);
   const def = state.items.find((x) => x.name === state.defItem);
-  $("atk-item-btn").innerHTML = `<div class="title">${state.atkItem}</div><div class="sub">${(atk?.effect || "").slice(0, 60)}</div>`;
-  $("def-item-btn").innerHTML = `<div class="title">${state.defItem}</div><div class="sub">${(def?.effect || "").slice(0, 60)}</div>`;
+  $("atk-item-btn").innerHTML = `<div class="title">${state.atkItem}${atkMega ? " 🔒" : ""}</div><div class="sub">${
+    atkMega ? "メガシンカ固定" : (atk?.effect || "").slice(0, 60)
+  }</div>`;
+  $("def-item-btn").innerHTML = `<div class="title">${state.defItem}${defMega ? " 🔒" : ""}</div><div class="sub">${
+    defMega ? "メガシンカ固定" : (def?.effect || "").slice(0, 60)
+  }</div>`;
 }
 
 function recalc() {
@@ -894,6 +974,7 @@ async function main() {
     pokemon: state.pokemon.length,
     moves: state.moves.length,
     items: state.items.length,
+    learnsets: Object.keys(state.learnsets).length,
     burijurasu: b?.abilities,
   });
 }
