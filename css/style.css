@@ -324,15 +324,31 @@ html, body {
   line-height: 1.1;
 }
 .ev-cell input, .rank-cell input {
+  box-sizing: border-box;
   width: 100%;
-  border: 1px solid #c5d5dd;
+  min-width: 2.8em;
+  min-height: 32px;
+  border: 2px solid #2f6f8f;
   border-radius: 4px;
   padding: 3px 4px;
-  font-size: 0.85rem;
+  background: #fff;
+  color: #102028;
+  font-size: 0.95rem;
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
   direction: ltr;
-  text-align: right;
+  text-align: center;
   unicode-bidi: plaintext;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.ev-cell input::-webkit-outer-spin-button,
+.ev-cell input::-webkit-inner-spin-button,
+.rank-cell input::-webkit-outer-spin-button,
+.rank-cell input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+  display: none;
 }
 .ev-total {
   font-size: 0.72rem;
