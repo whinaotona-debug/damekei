@@ -12,8 +12,8 @@ import {
   totalEv,
   clampEvAssign,
   getNature,
-} from "./stats.js?v=20260919f";
-import { TYPES } from "./types.js?v=20260919f";
+} from "./stats.js?v=20260919g";
+import { TYPES } from "./types.js?v=20260919g";
 import {
   emptyTeam,
   emptyMember,
@@ -24,7 +24,7 @@ import {
   loadActiveIds,
   saveActiveIds,
   isMegaName,
-} from "./team-store.js?v=20260919f";
+} from "./team-store.js?v=20260919g";
 
 const state = {
   pokemon: [],
@@ -169,27 +169,33 @@ function renderMembers() {
         <div class="ev-block">
           <div class="ev-block-head">
             <strong>努力値</strong>
-            <span class="ev-sum ${evSum > EV_MAX_TOTAL ? "warn" : ""}" data-ev-sum="${i}">合計 ${evSum} / ${EV_MAX_TOTAL}</span>
+            <span class="ev-sum ${evSum > EV_MAX_TOTAL ? "warn" : ""}" data-ev-sum="${i}">合計 ${evSum} / ${EV_MAX_TOTAL}（1項目最大${EV_MAX_PER}）</span>
           </div>
-          <div class="ev-row cols-3">
+          <p class="ev-legend">左の数字が努力値　「消す」=0　「32」=最大　右の太字が実数値</p>
+          <div class="ev-list">
             ${STAT_KEYS.map(
               (k) => `
-              <div class="ev-cell">
-                <label>${STAT_LABELS[k]}${natureArrow(k, m.nature)} <strong data-stat-v="${i}" data-stat="${k}">${stats[k]}</strong></label>
-                <div class="ev-controls">
-                  <input type="number" inputmode="numeric" min="0" max="${EV_MAX_PER}" data-ev="${i}" data-stat="${k}" value="${m.evs?.[k] || 0}" />
-                  <button type="button" class="ev-btn" data-ev-set="${i}" data-stat="${k}" data-ev-val="0">0</button>
-                  <button type="button" class="ev-btn primary32" data-ev-set="${i}" data-stat="${k}" data-ev-val="32">32</button>
+              <div class="ev-line">
+                <div class="ev-line-name">${STAT_LABELS[k]}${natureArrow(k, m.nature)}</div>
+                <div class="ev-line-controls">
+                  <label class="ev-input-wrap">
+                    <span class="ev-input-label">努力</span>
+                    <input type="number" inputmode="numeric" min="0" max="${EV_MAX_PER}" data-ev="${i}" data-stat="${k}" value="${m.evs?.[k] || 0}" />
+                  </label>
+                  <button type="button" class="ev-btn" data-ev-set="${i}" data-stat="${k}" data-ev-val="0" title="努力値を0に">消す</button>
+                  <button type="button" class="ev-btn primary32" data-ev-set="${i}" data-stat="${k}" data-ev-val="32" title="努力値32">32</button>
                 </div>
+                <div class="ev-line-stat">実数 <strong data-stat-v="${i}" data-stat="${k}">${stats[k]}</strong></div>
               </div>`
             ).join("")}
           </div>
           <div class="ev-presets">
-            <button type="button" class="ev-btn" data-ev-preset="${i}" data-preset="as">AS 32/32</button>
-            <button type="button" class="ev-btn" data-ev-preset="${i}" data-preset="cs">CS 32/32</button>
-            <button type="button" class="ev-btn" data-ev-preset="${i}" data-preset="hb">HB 32/32</button>
-            <button type="button" class="ev-btn" data-ev-preset="${i}" data-preset="hd">HD 32/32</button>
-            <button type="button" class="ev-btn" data-ev-preset="${i}" data-preset="clear">全0</button>
+            <span class="ev-preset-label">よく使う配分:</span>
+            <button type="button" class="ev-btn" data-ev-preset="${i}" data-preset="as">AS（攻撃+素早）</button>
+            <button type="button" class="ev-btn" data-ev-preset="${i}" data-preset="cs">CS（特攻+素早）</button>
+            <button type="button" class="ev-btn" data-ev-preset="${i}" data-preset="hb">HB（HP+防御）</button>
+            <button type="button" class="ev-btn" data-ev-preset="${i}" data-preset="hd">HD（HP+特防）</button>
+            <button type="button" class="ev-btn" data-ev-preset="${i}" data-preset="clear">全部消す</button>
           </div>
         </div>
 

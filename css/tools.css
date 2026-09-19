@@ -161,31 +161,108 @@ body.tools-page {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
+  gap: 8px;
   font-size: 0.85rem;
+  flex-wrap: wrap;
+}
+.ev-legend {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--muted);
+  line-height: 1.35;
+}
+.ev-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ev-line {
+  display: grid;
+  grid-template-columns: 4.5em 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 8px;
+  background: #f0f5f8;
+  border-radius: 8px;
+}
+.ev-line-name {
+  font-weight: 700;
+  font-size: 0.88rem;
+}
+.ev-line-controls {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  min-width: 0;
+}
+.ev-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 2px 6px 2px 8px;
+  flex: 1;
+  min-width: 0;
+}
+.ev-input-label {
+  font-size: 0.68rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.ev-input-wrap input {
+  border: none;
+  outline: none;
+  width: 100%;
+  min-width: 2.5em;
+  max-width: 4em;
+  font-size: 1.05rem;
+  font-weight: 800;
+  padding: 4px 2px;
+  background: transparent;
+}
+/* hide ugly spinners that make the field look broken */
+.ev-input-wrap input::-webkit-outer-spin-button,
+.ev-input-wrap input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.ev-input-wrap input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.ev-line-stat {
+  font-size: 0.75rem;
+  color: var(--muted);
+  white-space: nowrap;
+  text-align: right;
+  min-width: 4.5em;
+}
+.ev-line-stat strong {
+  color: var(--ink);
+  font-size: 1rem;
 }
 .ev-presets {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
+  align-items: center;
 }
-.ev-presets .ev-btn {
-  padding: 6px 8px;
+.ev-preset-label {
+  font-size: 0.72rem;
+  color: var(--muted);
+  width: 100%;
 }
-.member-card .ev-cell label {
-  display: flex;
-  justify-content: space-between;
+.ev-presets .ev-btn,
+.ev-line-controls .ev-btn {
+  padding: 7px 10px;
+  min-height: 36px;
   font-size: 0.78rem;
-  margin-bottom: 2px;
+  white-space: nowrap;
 }
-.member-card .ev-controls input {
-  min-height: 32px;
-  font-size: 0.95rem;
-  padding: 4px 6px;
-}
-.member-card .ev-btn {
-  min-height: 32px;
-  min-width: 36px;
-  font-size: 0.8rem;
+.member-card .ev-btn.primary32 {
+  min-width: 44px;
 }
 .move-block > strong {
   font-size: 0.85rem;
