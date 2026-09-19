@@ -16,9 +16,9 @@ import {
   totalEv,
   clampEvAssign,
   getNature,
-} from "./stats.js?v=20260919e";
-import { TYPES } from "./types.js?v=20260919e";
-import { calculateDamage } from "./damage.js?v=20260919e";
+} from "./stats.js?v=20260919i";
+import { TYPES } from "./types.js?v=20260919i";
+import { calculateDamage } from "./damage.js?v=20260919i";
 
 const HISTORY_KEY = "damekei-history-v1";
 const HISTORY_MAX = 40;
@@ -449,6 +449,33 @@ function bindDetailEvents(side) {
       recalc();
     }
   });
+  // Chrome等は number のホイール増減を無効化しているので自前でやる
+  detail.addEventListener(
+    "wheel",
+    (e) => {
+      const t = e.target;
+      if (!(t instanceof HTMLInputElement)) return;
+      if (t.dataset.ev) {
+        e.preventDefault();
+        const cur = Number(t.value) || 0;
+        const next = cur + (e.deltaY < 0 ? 1 : -1);
+        state[`${side}Evs`] = clampEvAssign(state[`${side}Evs`], t.dataset.ev, next);
+        t.value = String(state[`${side}Evs`][t.dataset.ev]);
+        updateLiveStats(side);
+        recalc();
+        return;
+      }
+      if (t.dataset.rank) {
+        e.preventDefault();
+        const cur = Number(t.value) || 0;
+        const next = Math.max(-6, Math.min(6, cur + (e.deltaY < 0 ? 1 : -1)));
+        t.value = String(next);
+        state[`${side}Ranks`][t.dataset.rank] = next;
+        recalc();
+      }
+    },
+    { passive: false }
+  );
 }
 
 function openNaturePicker(side) {

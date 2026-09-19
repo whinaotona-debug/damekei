@@ -12,8 +12,8 @@ import {
   totalEv,
   clampEvAssign,
   getNature,
-} from "./stats.js?v=20260919h";
-import { TYPES } from "./types.js?v=20260919h";
+} from "./stats.js?v=20260919i";
+import { TYPES } from "./types.js?v=20260919i";
 import {
   emptyTeam,
   emptyMember,
@@ -24,7 +24,7 @@ import {
   loadActiveIds,
   saveActiveIds,
   isMegaName,
-} from "./team-store.js?v=20260919h";
+} from "./team-store.js?v=20260919i";
 
 const state = {
   pokemon: [],
@@ -501,6 +501,24 @@ function wireGrid() {
     if (Number(t.value) !== (m.evs[stat] || 0)) t.value = String(m.evs[stat] || 0);
     refreshEvDisplay(i);
   });
+  // Chrome等は number のホイール増減を無効化しているので自前でやる
+  $("member-grid").addEventListener(
+    "wheel",
+    (e) => {
+      const t = e.target;
+      if (!(t instanceof HTMLInputElement) || t.dataset.ev == null) return;
+      e.preventDefault();
+      const i = Number(t.dataset.ev);
+      const stat = t.dataset.stat;
+      const m = state.team.members[i];
+      const cur = Number(t.value) || 0;
+      const next = cur + (e.deltaY < 0 ? 1 : -1);
+      m.evs = clampEvAssign(m.evs || emptyEvs(), stat, next);
+      t.value = String(m.evs[stat] || 0);
+      refreshEvDisplay(i);
+    },
+    { passive: false }
+  );
 }
 
 function saveCurrent(silent = false) {
