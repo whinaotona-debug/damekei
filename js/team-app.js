@@ -11,8 +11,8 @@ import {
   totalEv,
   clampEvAssign,
   getNature,
-} from "./stats.js?v=20260920d";
-import { TYPES } from "./types.js?v=20260920d";
+} from "./stats.js?v=20260920e";
+import { TYPES } from "./types.js?v=20260920e";
 import {
   loadTeams,
   replaceTeamAt,
@@ -22,7 +22,7 @@ import {
   applyUiMode,
   isMegaName,
   emptyMember,
-} from "./team-store.js?v=20260920d";
+} from "./team-store.js?v=20260920e";
 import {
   $,
   textMatchesQuery,
@@ -31,9 +31,9 @@ import {
   loadGameData,
   wireModalClose,
   wireUiModeToggle,
-} from "./common.js?v=20260920d";
-import { buildOverviewHtml, downloadOverviewPng } from "./overview.js?v=20260920d";
-import { typeIconHtml, typePillHtml, pokeImgHtml, itemImgHtml } from "./media.js?v=20260920d";
+} from "./common.js?v=20260920e";
+import { buildOverviewHtml, downloadOverviewPng } from "./overview.js?v=20260920e";
+import { typeIconHtml, typePillHtml, pokeImgHtml, itemImgHtml } from "./media.js?v=20260920e";
 
 const state = {
   pokemon: [],
@@ -153,7 +153,7 @@ function renderList() {
       return `
       <button type="button" class="roster-row" data-open="${i}">
         <span class="slot-no">#${i + 1}</span>
-        ${pokeImgHtml(poke.name, { size: 52 })}
+        ${pokeImgHtml(poke.name, { size: 52, dex: poke.dex, round: true })}
         <span class="roster-main">
           <span class="roster-name">${poke.name} ${typeIcons}</span>
           <span class="roster-sub">${itemImgHtml(m.item, { size: 18 })} ${m.item || "なし"}　${m.nature}</span>
@@ -190,7 +190,7 @@ function renderTrain() {
     <section class="train-card">
       <button type="button" class="selector-btn" data-pick-poke="${i}">
         <div class="train-poke-head">
-          ${pokeImgHtml(poke.name, { size: 72 })}
+          ${pokeImgHtml(poke.name, { size: 72, dex: poke.dex, round: true })}
           <div>
             <div class="k">ポケモン（変更）</div>
             <div class="title">${poke.name}</div>
@@ -326,7 +326,7 @@ function openPokePicker(i) {
       .slice(0, 80)
       .map(
         (p) => `<button type="button" class="list-item" data-name="${p.name}">
-        <div style="display:flex;align-items:center;gap:8px">${pokeImgHtml(p.name, { size: 40 })}<div><div>${p.name}</div>
+        <div style="display:flex;align-items:center;gap:8px">${pokeImgHtml(p.name, { size: 40, dex: p.dex, round: true })}<div><div>${p.name}</div>
         <div class="s">${(p.types || []).map((ty) => typeIconHtml(ty, { size: "sm" })).join("")}　H${p.baseStats.hp} A${p.baseStats.atk} B${p.baseStats.def} C${p.baseStats.spa} D${p.baseStats.spd} S${p.baseStats.spe}</div></div></div>
       </button>`
       )

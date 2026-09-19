@@ -1,10 +1,8 @@
 /**
  * タイプアイコン・ポケモン/持ち物スプライト
  */
-import mediaIds from "./media-ids.js?v=20260920d";
+import mediaIds from "./media-ids.js?v=20260920e";
 
-const POKE_SPRITE = "https://play.pokemonshowdown.com/sprites/dex";
-const POKE_SPRITE_FALLBACK = "https://play.pokemonshowdown.com/sprites/gen5";
 const ITEM_SPRITE = "https://play.pokemonshowdown.com/sprites/itemicons";
 
 const POKE_ALIAS = {
@@ -42,43 +40,44 @@ export const TYPE_COLORS = {
   フェアリー: "#ec8fe6",
 };
 
+/** 白シルエット（わかりやすい簡易イラスト） viewBox 0 0 64 64 */
 const TYPE_GLYPHS = {
   ノーマル:
-    '<circle cx="32" cy="32" r="14" fill="none" stroke="#fff" stroke-width="6"/><circle cx="32" cy="32" r="5" fill="#fff"/>',
+    '<circle cx="32" cy="32" r="16" fill="none" stroke="#fff" stroke-width="7"/><circle cx="32" cy="32" r="6" fill="#fff"/>',
   ほのお:
-    '<path fill="#fff" d="M32 8c2 10-8 14-8 24a12 12 0 0024 0c0-8-6-12-4-20-6 4-8 10-12-4z"/>',
+    '<path fill="#fff" d="M33 6c1 11-10 15-9 28 0 9 7 16 16 16 10 0 16-8 16-17 0-9-5-14-5-22-7 5-10 12-18-5z"/>',
   みず:
-    '<path fill="#fff" d="M32 10c0 0-14 18-14 28a14 14 0 0028 0c0-10-14-28-14-28z"/>',
+    '<path fill="#fff" d="M32 8C32 8 14 30 14 40a18 18 0 0036 0C50 30 32 8 32 8z"/>',
   でんき:
-    '<path fill="#fff" d="M36 8L20 34h12l-4 22 20-30H36l4-18z"/>',
+    '<path fill="#fff" d="M38 4L18 34h14L24 60l28-36H38l6-20z"/>',
   くさ:
-    '<path fill="#fff" d="M32 10c12 8 16 20 14 30-8-4-14-4-14-4s-6 0-14 4c-2-10 2-22 14-30z"/><path fill="none" stroke="#fff" stroke-width="3" d="M32 28v26"/>',
+    '<path fill="#fff" d="M32 6c14 10 18 24 16 36-10-6-16-6-16-6s-6 0-16 6c-2-12 2-26 16-36z"/><rect x="29" y="30" width="6" height="28" rx="2" fill="#fff"/>',
   こおり:
-    '<g fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round"><path d="M32 8v48M14 20l36 24M14 44l36-24"/><circle cx="32" cy="32" r="5" fill="#fff" stroke="none"/></g>',
+    '<g stroke="#fff" stroke-width="5" stroke-linecap="round" fill="none"><path d="M32 6v52M10 19l44 26M10 45l44-26"/><path d="M22 12l10 6 10-6M22 52l10-6 10 6"/></g><circle cx="32" cy="32" r="5" fill="#fff"/>',
   かくとう:
-    '<path fill="#fff" d="M22 38c0-6 2-10 6-12v-6c0-2 2-4 4-4s4 2 4 4v4c2-1 4 0 4 3v3c2-1 4 0 4 3v12c0 6-6 10-14 10-8 0-12-5-12-12v-5z"/>',
+    '<path fill="#fff" d="M20 40c0-8 3-13 8-15V16c0-3 2-5 5-5s5 2 5 5v7c3-2 5-1 5 3v4c3-1 5 0 5 4v14c0 8-7 13-16 13-9 0-12-6-12-14v-7z"/>',
   どく:
-    '<path fill="#fff" d="M32 10c8 0 14 6 14 14 0 10-8 16-14 28-6-12-14-18-14-28 0-8 6-14 14-14zm-6 12a3 3 0 110 6 3 3 0 010-6zm12 0a3 3 0 110 6 3 3 0 010-6z"/>',
+    '<path fill="#fff" d="M32 8c10 0 18 8 18 18 0 12-10 20-18 34C24 46 14 38 14 26 14 16 22 8 32 8z"/><circle cx="25" cy="26" r="4" fill="#5a2a7a"/><circle cx="39" cy="26" r="4" fill="#5a2a7a"/>',
   じめん:
-    '<path fill="#fff" d="M8 44l12-20 12 12 12-16 12 24H8z"/>',
+    '<path fill="#fff" d="M6 46l10-8 8 4 10-14 10 10 8-6 10 14H6z"/><circle cx="22" cy="28" r="3" fill="#fff"/><circle cx="40" cy="22" r="2.5" fill="#fff"/><circle cx="48" cy="30" r="2" fill="#fff"/>',
   ひこう:
-    '<path fill="#fff" d="M10 36c12-4 22-16 26-26 2 12 6 20 18 28-14 0-24 4-32 12-2-6-6-10-12-14z"/>',
+    '<path fill="#fff" d="M8 38c14-2 26-18 30-30 4 14 10 24 22 30-16 2-28 8-38 18-2-8-6-14-14-18z"/>',
   エスパー:
-    '<path fill="#fff" d="M32 10a18 18 0 00-6 35l6 9 6-9a18 18 0 00-6-35zm0 8a10 10 0 110 20 10 10 0 010-20zm0 5a5 5 0 100 10 5 5 0 000-10z"/>',
+    '<path fill="#fff" d="M32 6a20 20 0 00-8 39l8 13 8-13a20 20 0 00-8-39zm0 10a10 10 0 110 20 10 10 0 010-20z"/><circle cx="32" cy="26" r="4" fill="#ce4069"/>',
   むし:
-    '<path fill="#fff" d="M32 10c7 2 12 8 12 18v8c0 8-5 14-12 16-7-2-12-8-12-16v-8c0-10 5-16 12-18z"/>',
+    '<ellipse cx="32" cy="34" rx="16" ry="20" fill="#fff"/><circle cx="26" cy="20" r="5" fill="#fff"/><circle cx="38" cy="20" r="5" fill="#fff"/><path d="M16 18l-8-8M48 18l8-8" stroke="#fff" stroke-width="4" stroke-linecap="round"/>',
   いわ:
-    '<path fill="#fff" d="M20 18l14-8 16 10v16l-12 12H22L12 36V24l8-6z"/>',
+    '<path fill="#fff" d="M16 20l18-10 20 12v18l-14 14H20L10 40V26l6-6z"/>',
   ゴースト:
-    '<path fill="#fff" d="M32 8c12 0 18 10 18 22v26l-6-4-6 4-6-4-6 4-6-4-6 4V30c0-12 6-22 18-22zm-7 18a4 4 0 110 8 4 4 0 010-8zm14 0a4 4 0 110 8 4 4 0 010-8z"/>',
+    '<path fill="#fff" d="M32 6c14 0 22 12 22 26v28l-7-5-7 5-8-5-8 5-7-5-7 5V32C10 18 18 6 32 6z"/><circle cx="24" cy="30" r="4" fill="#2a3560"/><circle cx="40" cy="30" r="4" fill="#2a3560"/>',
   ドラゴン:
-    '<path fill="#fff" d="M32 6l6 14 16 2-12 10 4 16-14-8-14 8 4-16L10 22l16-2 6-14z"/>',
+    '<path fill="#fff" d="M32 4l8 10 14-2-2 14 12 8-12 6 4 14-14-6-10 12-8-14-14 2 6-12L4 22l14-2L32 4z"/>',
   あく:
-    '<path fill="#fff" d="M32 8c14 8 20 20 18 34-8-6-14-8-18-8s-10 2-18 8c-2-14 4-26 18-34z"/>',
+    '<path fill="#fff" d="M32 6c16 10 22 24 20 40-10-8-16-10-20-10s-10 2-20 10C10 30 16 16 32 6z"/><path d="M22 36c2 6 6 8 10 8s8-2 10-8" fill="none" stroke="#2a2430" stroke-width="3"/>',
   はがね:
-    '<path fill="#fff" d="M32 8l20 12v24L32 56 12 44V20L32 8zm0 10l-12 7v14l12 7 12-7V25l-12-7z"/>',
+    '<path fill="#fff" d="M32 6l22 13v26L32 58 10 45V19L32 6zm0 12L18 27v18l14 8 14-8V27L32 18z"/>',
   フェアリー:
-    '<path fill="#fff" d="M32 8l4 14h14l-11 8 4 14-11-8-11 8 4-14-11-8h14l4-14z"/>',
+    '<path fill="#fff" d="M32 8c6 10 18 12 24 8-2 10-8 16-14 20 8 2 14 10 14 18-10-2-18-8-24-16-6 8-14 14-24 16 0-8 6-16 14-18C16 32 10 26 8 16c6 4 18 2 24-8z"/>',
 };
 
 function esc(s) {
@@ -99,14 +98,21 @@ export function itemSpriteId(jaName) {
   return ITEM_ALIAS[jaName] || mediaIds.items?.[jaName] || "";
 }
 
-export function pokeSpriteUrl(jaName) {
+/** 複数CDNを順に試す */
+export function pokeSpriteUrls(jaName, dex) {
   const id = pokeSpriteId(jaName);
-  return id ? `${POKE_SPRITE}/${id}.png` : "";
-}
-
-export function pokeSpriteFallbackUrl(jaName) {
-  const id = pokeSpriteId(jaName);
-  return id ? `${POKE_SPRITE_FALLBACK}/${id}.png` : "";
+  const urls = [];
+  if (id) {
+    urls.push(`https://play.pokemonshowdown.com/sprites/gen5/${id}.png`);
+    urls.push(`https://play.pokemonshowdown.com/sprites/dex/${id}.png`);
+    urls.push(`https://raw.githubusercontent.com/msikma/pokesprite/master/pokemon-gen8/regular/${id}.png`);
+  }
+  if (dex && Number(dex) > 0) {
+    const n = Number(dex);
+    urls.push(`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${n}.png`);
+    urls.push(`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${n}.png`);
+  }
+  return [...new Set(urls)];
 }
 
 export function itemSpriteUrl(jaName) {
@@ -115,10 +121,14 @@ export function itemSpriteUrl(jaName) {
 }
 
 export function typeIconHtml(type, { size = "md" } = {}) {
-  if (!type) return `<span class="type-icon ghost size-${size}" aria-hidden="true"></span>`;
+  if (!type) {
+    return `<span class="type-icon ghost size-${size}" aria-hidden="true"></span>`;
+  }
   const color = TYPE_COLORS[type] || "#888";
   const glyph = TYPE_GLYPHS[type] || TYPE_GLYPHS["ノーマル"];
-  return `<span class="type-icon size-${size}" title="${esc(type)}" style="--type-color:${color}" role="img" aria-label="${esc(type)}"><svg viewBox="0 0 64 64" aria-hidden="true">${glyph}</svg></span>`;
+  // インラインサイズでCSS未読込でも丸＋絵が出るようにする
+  const px = size === "sm" ? 22 : size === "lg" ? 36 : 28;
+  return `<span class="type-icon size-${size}" title="${esc(type)}" role="img" aria-label="${esc(type)}" style="--type-color:${color};width:${px}px;height:${px}px;background:${color};border-radius:50%;display:inline-grid;place-items:center;flex:0 0 auto;box-shadow:0 0 0 1px rgba(0,0,0,.35),inset 0 1px 2px rgba(255,255,255,.35)"><svg viewBox="0 0 64 64" width="${Math.round(px * 0.72)}" height="${Math.round(px * 0.72)}" aria-hidden="true" style="display:block">${glyph}</svg></span>`;
 }
 
 export function typePillHtml(type) {
@@ -126,14 +136,15 @@ export function typePillHtml(type) {
   return `<span class="type-pill-row">${typeIconHtml(type, { size: "sm" })}<span class="type-pill-label">${esc(type)}</span></span>`;
 }
 
-export function pokeImgHtml(jaName, { cls = "poke-img", size = 64 } = {}) {
-  const url = pokeSpriteUrl(jaName);
-  const fb = pokeSpriteFallbackUrl(jaName);
+export function pokeImgHtml(jaName, { cls = "poke-img", size = 64, dex = 0, round = false } = {}) {
+  const urls = pokeSpriteUrls(jaName, dex);
   const label = esc((jaName || "?").slice(0, 2));
-  if (!url) {
-    return `<span class="${cls} missing" style="width:${size}px;height:${size}px">${label}</span>`;
+  const roundCls = round ? " round" : "";
+  if (!urls.length) {
+    return `<span class="${cls} missing${roundCls}" style="width:${size}px;height:${size}px">${label}</span>`;
   }
-  return `<img class="${cls}" src="${esc(url)}" width="${size}" height="${size}" alt="${esc(jaName || "")}" loading="lazy" decoding="async" data-fb="${esc(fb)}" onerror="if(this.dataset.fb&&!this.dataset.retried){this.dataset.retried=1;this.src=this.dataset.fb;}else{this.style.display='none';}" />`;
+  const dataUrls = esc(JSON.stringify(urls));
+  return `<img class="${cls}${roundCls}" src="${esc(urls[0])}" width="${size}" height="${size}" alt="${esc(jaName || "")}" loading="lazy" decoding="async" referrerpolicy="no-referrer" data-urls="${dataUrls}" data-i="0" data-label="${label}" onerror="(function(el){var u=[];try{u=JSON.parse(el.getAttribute('data-urls')||'[]')}catch(e){}var i=(+el.dataset.i||0)+1;if(i<u.length){el.dataset.i=i;el.src=u[i];}else{var s=document.createElement('span');s.className=el.className+' missing';s.style.width=el.width+'px';s.style.height=el.height+'px';s.textContent=el.dataset.label||'?';el.replaceWith(s);}})(this)" />`;
 }
 
 export function itemImgHtml(jaName, { cls = "item-img", size = 24 } = {}) {
@@ -144,5 +155,5 @@ export function itemImgHtml(jaName, { cls = "item-img", size = 24 } = {}) {
   if (!url) {
     return `<span class="${cls} missing" style="width:${size}px;height:${size}px">?</span>`;
   }
-  return `<img class="${cls}" src="${esc(url)}" width="${size}" height="${size}" alt="${esc(jaName)}" title="${esc(jaName)}" loading="lazy" decoding="async" onerror="this.style.opacity='0'" />`;
+  return `<img class="${cls}" src="${esc(url)}" width="${size}" height="${size}" alt="${esc(jaName)}" title="${esc(jaName)}" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.style.opacity='0'" />`;
 }

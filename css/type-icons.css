@@ -51,8 +51,16 @@
 .poke-img {
   object-fit: contain;
   image-rendering: auto;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.08);
   border-radius: 8px;
+}
+.poke-img.round,
+.poke-img.missing.round {
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, rgba(255,255,255,.15), rgba(0,0,0,.2)), #2a3d55;
+  object-fit: contain;
+  padding: 4px;
+  box-sizing: border-box;
 }
 .poke-img.missing,
 .item-img.missing {
@@ -64,10 +72,39 @@
   font-weight: 800;
   color: #9bb0c8;
 }
-.item-img {
-  object-fit: contain;
-  image-rendering: pixelated;
-  vertical-align: middle;
+.type-icon svg {
+  width: 72%;
+  height: 72%;
+  display: block;
+  overflow: visible;
+}
+.type-icon.size-sm {
+  width: 22px !important;
+  height: 22px !important;
+}
+.type-icon.size-md {
+  width: 28px !important;
+  height: 28px !important;
+}
+.type-icon.size-lg {
+  width: 36px !important;
+  height: 36px !important;
+}
+.ov-sprite-wrap .poke-img {
+  width: 104px;
+  height: 104px;
+}
+.ov-move {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.ov-types {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
 }
 
 /* 構築概要を画面いっぱい寄りに */

@@ -1,8 +1,8 @@
 /**
  * 構築概要カード描画 & PNG保存
  */
-import { calcAllStats, emptyEvs, STAT_LABELS, STAT_KEYS } from "./stats.js?v=20260920d";
-import { typeIconHtml, pokeImgHtml, itemImgHtml } from "./media.js?v=20260920d";
+import { calcAllStats, emptyEvs, STAT_LABELS, STAT_KEYS } from "./stats.js?v=20260920e";
+import { typeIconHtml, pokeImgHtml, itemImgHtml } from "./media.js?v=20260920e";
 
 function esc(s) {
   return String(s || "")
@@ -15,9 +15,9 @@ function esc(s) {
 function moveRow(moveName, moveByName) {
   const mv = moveName ? moveByName(moveName) : null;
   if (!mv) {
-    return `<div class="ov-move empty">${typeIconHtml("", { size: "sm" })}<span>未設定</span></div>`;
+    return `<div class="ov-move empty">${typeIconHtml("", { size: "md" })}<span>未設定</span></div>`;
   }
-  return `<div class="ov-move">${typeIconHtml(mv.type, { size: "sm" })}<span>${esc(mv.name)}</span></div>`;
+  return `<div class="ov-move">${typeIconHtml(mv.type, { size: "md" })}<span>${esc(mv.name)}</span></div>`;
 }
 
 function evShort(evs) {
@@ -26,11 +26,6 @@ function evShort(evs) {
   return parts.length ? parts.join(" ") : "努力0";
 }
 
-/**
- * @param {object} team
- * @param {(name:string)=>any} pokeByName
- * @param {(name:string)=>any} moveByName
- */
 export function buildOverviewHtml(team, pokeByName, moveByName) {
   const cards = team.members
     .map((m, i) => {
@@ -51,13 +46,13 @@ export function buildOverviewHtml(team, pokeByName, moveByName) {
           <div class="ov-left">
             <div class="ov-name">${esc(poke.name)}</div>
             <div class="ov-meta">${esc(m.ability || "—")}</div>
-            <div class="ov-meta ov-item-row">${itemImgHtml(m.item, { size: 22 })}<span>${esc(m.item || "なし")}</span></div>
+            <div class="ov-meta ov-item-row">${itemImgHtml(m.item, { size: 24 })}<span>${esc(m.item || "なし")}</span></div>
             <div class="ov-meta muted">${esc(m.nature)}　${esc(evShort(m.evs))}</div>
             <div class="ov-stats">H${stats.hp} A${stats.atk} B${stats.def} C${stats.spa} D${stats.spd} S${stats.spe}</div>
           </div>
           <div class="ov-sprite-wrap">
             <div class="ov-types">${types.map((t) => typeIconHtml(t, { size: "md" })).join("")}</div>
-            ${pokeImgHtml(poke.name, { size: 96 })}
+            ${pokeImgHtml(poke.name, { size: 104, dex: poke.dex, round: true })}
           </div>
           <div class="ov-moves">
             ${[0, 1, 2, 3].map((mi) => moveRow(m.moves?.[mi], moveByName)).join("")}
@@ -78,19 +73,19 @@ export function buildOverviewHtml(team, pokeByName, moveByName) {
 }
 
 export async function downloadOverviewPng(sheetEl, filename) {
-  // wait for images
   const imgs = [...sheetEl.querySelectorAll("img")];
   await Promise.all(
-    imgs.map(
-      (img) =>
-        img.complete
-          ? Promise.resolve()
-          : new Promise((res) => {
-              img.addEventListener("load", res, { once: true });
-              img.addEventListener("error", res, { once: true });
-            })
+    imgs.map((img) =>
+      img.complete
+        ? Promise.resolve()
+        : new Promise((res) => {
+            img.addEventListener("load", res, { once: true });
+            img.addEventListener("error", res, { once: true });
+          })
     )
   );
+  // フォールバック連鎖の猶予
+  await new Promise((r) => setTimeout(r, 400));
 
   if (typeof window.html2canvas === "function") {
     const canvas = await window.html2canvas(sheetEl, {
@@ -102,21 +97,12 @@ export async function downloadOverviewPng(sheetEl, filename) {
     triggerDownload(canvas.toDataURL("image/png"), filename);
     return;
   }
-
-  triggerDownload(
-    // fallback: just tell user
-    sheetEl,
-    filename
-  );
+  alert("画像ライブラリの読み込みに失敗しました。再読み込みしてから試してください。");
 }
 
-function triggerDownload(dataUrlOrEl, filename) {
-  if (typeof dataUrlOrEl !== "string") {
-    alert("画像ライブラリの読み込みに失敗しました。再読み込みしてから試してください。");
-    return;
-  }
+function triggerDownload(dataUrl, filename) {
   const a = document.createElement("a");
-  a.href = dataUrlOrEl;
+  a.href = dataUrl;
   a.download = filename || "team-overview.png";
   a.click();
 }
