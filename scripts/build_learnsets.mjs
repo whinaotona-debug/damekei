@@ -207,7 +207,28 @@ async function main() {
     }
 
     const jaMoves = [];
-    for (const enId of learnsetsEn[id]) {
+    const enIds = new Set(learnsetsEn[id] || []);
+
+    // Appliance Rotom etc.: Champions lists only signature move — merge base species learnset
+    if (rotom?.baseSpecies) {
+      const baseEntry =
+        rotomPokes.find((x) => x.name === rotom.baseSpecies) ||
+        rotomPokes.find((x) => x.id === String(rotom.baseSpecies).toLowerCase().replace(/[^a-z0-9]/g, ""));
+      if (baseEntry && learnsetsEn[baseEntry.id]?.length) {
+        for (const enId of learnsetsEn[baseEntry.id]) enIds.add(enId);
+      }
+    }
+    // Mega with empty/missing learnset already remapped to base id above;
+    // if mega id had a short list, also merge base
+    if (poke.name.startsWith("メガ") && poke.name !== "メガニウム" && rotom) {
+      const baseJa = stripMega(poke.name);
+      const baseRotom = byJa.get(baseJa) || byNormJa.get(norm(baseJa));
+      if (baseRotom && learnsetsEn[baseRotom.id]?.length && id !== baseRotom.id) {
+        for (const enId of learnsetsEn[baseRotom.id]) enIds.add(enId);
+      }
+    }
+
+    for (const enId of enIds) {
       const ja = moveIdToJa.get(enId);
       if (!ja || ja === "(技なし)") continue;
       // NFKC match: １０まんボルト → 10まんボルト, ＤＤラリアット → DDラリアット
@@ -233,8 +254,9 @@ async function main() {
         emptyLearn: emptyLearn.slice(0, 20),
         sample: {
           メガリザードンX: out["メガリザードンX"]?.slice(0, 15),
-          カバルドン: out["カバルドン"]?.slice(0, 10),
-          ミミッキュ: out["ミミッキュ"]?.length,
+          ウォッシュロトム: out["ウォッシュロトム"]?.length,
+          メガボーマンダ: out["メガボーマンダ"]?.length,
+          ボーマンダ: out["ボーマンダ"]?.length,
         },
       },
       null,
