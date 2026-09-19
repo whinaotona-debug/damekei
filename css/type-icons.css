@@ -1,0 +1,162 @@
+/* タイプ円形アイコン（参考: SV系タイプバッジ） */
+.type-icon {
+  --type-color: #888;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--type-color);
+  background-image: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.35), transparent 55%);
+  box-shadow:
+    0 0 0 1.5px rgba(0, 0, 0, 0.35),
+    inset 0 1px 2px rgba(255, 255, 255, 0.35);
+  vertical-align: middle;
+}
+.type-icon svg {
+  width: 68%;
+  height: 68%;
+  display: block;
+  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.2));
+}
+.type-icon.size-sm {
+  width: 18px;
+  height: 18px;
+}
+.type-icon.size-md {
+  width: 26px;
+  height: 26px;
+}
+.type-icon.size-lg {
+  width: 34px;
+  height: 34px;
+}
+.type-icon.ghost {
+  background: #445566;
+  box-shadow: none;
+}
+.type-pill-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  vertical-align: middle;
+}
+.type-pill-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: inherit;
+}
+
+.poke-img {
+  object-fit: contain;
+  image-rendering: auto;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+}
+.poke-img.missing,
+.item-img.missing {
+  display: inline-grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #9bb0c8;
+}
+.item-img {
+  object-fit: contain;
+  image-rendering: pixelated;
+  vertical-align: middle;
+}
+
+/* 構築概要を画面いっぱい寄りに */
+.modal.open.overview-modal {
+  padding: 0;
+  align-items: stretch;
+}
+.modal.open.overview-modal .modal-card {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+}
+.modal.open.overview-modal .modal-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 8px 10px 16px;
+}
+.overview-wrap {
+  overflow: visible;
+  max-height: none;
+}
+.overview-sheet {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 18px 16px 22px;
+  min-height: calc(100dvh - 72px);
+  box-sizing: border-box;
+}
+.overview-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+@media (min-width: 700px) {
+  .overview-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+html[data-ui="ipad"] .overview-grid {
+  grid-template-columns: 1fr 1fr;
+}
+.ov-card {
+  min-height: 148px;
+  padding: 14px 16px;
+}
+.ov-main {
+  grid-template-columns: 1.15fr auto 1.1fr;
+  gap: 12px;
+  align-items: center;
+}
+.ov-sprite-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 88px;
+}
+.ov-sprite-wrap .poke-img {
+  width: 96px;
+  height: 96px;
+}
+.ov-item-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ov-move {
+  gap: 8px;
+  font-size: 0.88rem;
+}
+.ov-name {
+  font-size: 1.15rem;
+}
+.overview-title {
+  font-size: 1.6rem;
+}
+
+.roster-row .poke-img {
+  width: 52px;
+  height: 52px;
+  flex: 0 0 auto;
+}
+.roster-row .item-img {
+  width: 20px;
+  height: 20px;
+}

@@ -33,6 +33,7 @@ export function openModal(title, html) {
 export function closeModal() {
   const modal = $("modal");
   modal.classList.remove("open");
+  modal.classList.remove("overview-modal");
   modal.setAttribute("aria-hidden", "true");
 }
 

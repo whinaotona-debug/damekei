@@ -11,8 +11,8 @@ import {
   totalEv,
   clampEvAssign,
   getNature,
-} from "./stats.js?v=20260920c";
-import { TYPES } from "./types.js?v=20260920c";
+} from "./stats.js?v=20260920d";
+import { TYPES } from "./types.js?v=20260920d";
 import {
   loadTeams,
   replaceTeamAt,
@@ -22,7 +22,7 @@ import {
   applyUiMode,
   isMegaName,
   emptyMember,
-} from "./team-store.js?v=20260920c";
+} from "./team-store.js?v=20260920d";
 import {
   $,
   textMatchesQuery,
@@ -31,8 +31,9 @@ import {
   loadGameData,
   wireModalClose,
   wireUiModeToggle,
-} from "./common.js?v=20260920c";
-import { buildOverviewHtml, downloadOverviewPng } from "./overview.js?v=20260920c";
+} from "./common.js?v=20260920d";
+import { buildOverviewHtml, downloadOverviewPng } from "./overview.js?v=20260920d";
+import { typeIconHtml, typePillHtml, pokeImgHtml, itemImgHtml } from "./media.js?v=20260920d";
 
 const state = {
   pokemon: [],
@@ -96,7 +97,7 @@ function moveSlotHtml(moveName, slotLabel) {
   if (!mv) {
     return `<div class="k">${slotLabel}</div><div class="title move-empty">＋ 技</div>`;
   }
-  return `<div class="k">${slotLabel}</div><div class="title">${mv.name}</div><div class="sub"><span class="type-pill type-${mv.type}">${mv.type}</span></div>`;
+  return `<div class="k">${slotLabel}</div><div class="title">${typeIconHtml(mv.type, { size: "sm" })} ${mv.name}</div><div class="sub">${typePillHtml(mv.type)} ${mv.category}　威力 ${mv.power ?? "—"}</div>`;
 }
 
 function showList() {
@@ -148,12 +149,14 @@ function renderList() {
       }
       const stats = calcAllStats(poke.baseStats, m.evs || emptyEvs(), m.nature);
       const moves = (m.moves || []).filter(Boolean).join(" / ") || "技未設定";
+      const typeIcons = (poke.types || []).map((ty) => typeIconHtml(ty, { size: "sm" })).join("");
       return `
       <button type="button" class="roster-row" data-open="${i}">
         <span class="slot-no">#${i + 1}</span>
+        ${pokeImgHtml(poke.name, { size: 52 })}
         <span class="roster-main">
-          <span class="roster-name">${poke.name}</span>
-          <span class="roster-sub">${poke.types.join("/")}　${m.item || "なし"}　${m.nature}</span>
+          <span class="roster-name">${poke.name} ${typeIcons}</span>
+          <span class="roster-sub">${itemImgHtml(m.item, { size: 18 })} ${m.item || "なし"}　${m.nature}</span>
           <span class="roster-sub">H${stats.hp} A${stats.atk} B${stats.def} C${stats.spa} D${stats.spd} S${stats.spe}</span>
           <span class="roster-sub">${moves}</span>
         </span>
@@ -186,9 +189,14 @@ function renderTrain() {
   $("train-body").innerHTML = `
     <section class="train-card">
       <button type="button" class="selector-btn" data-pick-poke="${i}">
-        <div class="k">ポケモン（変更）</div>
-        <div class="title">${poke.name}</div>
-        <div class="sub">${poke.types.join(" / ")}　種族 H${poke.baseStats.hp} A${poke.baseStats.atk} B${poke.baseStats.def} C${poke.baseStats.spa} D${poke.baseStats.spd} S${poke.baseStats.spe}</div>
+        <div class="train-poke-head">
+          ${pokeImgHtml(poke.name, { size: 72 })}
+          <div>
+            <div class="k">ポケモン（変更）</div>
+            <div class="title">${poke.name}</div>
+            <div class="sub">${(poke.types || []).map((ty) => typeIconHtml(ty, { size: "sm" })).join("")}　種族 H${poke.baseStats.hp} A${poke.baseStats.atk} B${poke.baseStats.def} C${poke.baseStats.spa} D${poke.baseStats.spd} S${poke.baseStats.spe}</div>
+          </div>
+        </div>
       </button>
 
       <div class="field-row">
@@ -207,7 +215,7 @@ function renderTrain() {
 
       <button type="button" class="selector-btn compact" data-pick-item="${i}">
         <div class="k">持ち物${mega ? "（メガ固定）" : ""}</div>
-        <div class="title">${m.item || "なし"}${mega ? " 🔒" : ""}</div>
+        <div class="title">${itemImgHtml(m.item, { size: 22 })} ${m.item || "なし"}${mega ? " 🔒" : ""}</div>
       </button>
 
       <div class="ev-block">
@@ -318,8 +326,8 @@ function openPokePicker(i) {
       .slice(0, 80)
       .map(
         (p) => `<button type="button" class="list-item" data-name="${p.name}">
-        <div>${p.name}</div>
-        <div class="s">${p.types.join("/")}　H${p.baseStats.hp} A${p.baseStats.atk} B${p.baseStats.def} C${p.baseStats.spa} D${p.baseStats.spd} S${p.baseStats.spe}</div>
+        <div style="display:flex;align-items:center;gap:8px">${pokeImgHtml(p.name, { size: 40 })}<div><div>${p.name}</div>
+        <div class="s">${(p.types || []).map((ty) => typeIconHtml(ty, { size: "sm" })).join("")}　H${p.baseStats.hp} A${p.baseStats.atk} B${p.baseStats.def} C${p.baseStats.spa} D${p.baseStats.spd} S${p.baseStats.spe}</div></div></div>
       </button>`
       )
       .join("");
@@ -358,7 +366,7 @@ function openItemPicker(i) {
       .slice(0, 100)
       .map(
         (it) => `<button type="button" class="list-item" data-name="${it.name}">
-        <div>${it.name}</div><div class="s">${(it.effect || "").slice(0, 80)}</div>
+        <div style="display:flex;align-items:center;gap:8px">${itemImgHtml(it.name, { size: 24 })}<div><div>${it.name}</div><div class="s">${(it.effect || "").slice(0, 80)}</div></div></div>
       </button>`
       )
       .join("");
@@ -399,8 +407,8 @@ function openMovePicker(i, mi) {
         .slice(0, 100)
         .map(
           (mv) => `<button type="button" class="list-item" data-name="${mv.name}">
-          <div>${mv.name}</div>
-          <div class="s">${mv.type} ${mv.category}　威力 ${mv.power ?? "—"}</div>
+          <div style="display:flex;align-items:center;gap:8px">${typeIconHtml(mv.type, { size: "md" })}<div><div>${mv.name}</div>
+          <div class="s">${mv.type} ${mv.category}　威力 ${mv.power ?? "—"}</div></div></div>
         </button>`
         ),
     ].join("");
@@ -460,6 +468,7 @@ function showOverview() {
     </div>
     <div class="overview-wrap">${html}</div>`
   );
+  $("modal").classList.add("overview-modal");
   $("btn-save-png").addEventListener("click", async () => {
     const sheet = $("overview-sheet");
     if (!sheet) return;

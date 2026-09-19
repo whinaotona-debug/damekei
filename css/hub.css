@@ -388,6 +388,20 @@ html[data-ui="ipad"] .member-grid {
   gap: 10px;
   box-shadow: var(--shadow);
 }
+.train-poke-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+}
+.train-poke-head .title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.selector-btn .title .type-icon {
+  margin-right: 2px;
+}
 .train-empty {
   background: #fff;
   border: 1px dashed var(--line);
