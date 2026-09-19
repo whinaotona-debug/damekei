@@ -10,14 +10,15 @@ import {
   EV_MAX_PER,
   EV_MAX_TOTAL,
   calcAllStats,
+  applyRank,
   emptyEvs,
   emptyRanks,
   totalEv,
   clampEvAssign,
   getNature,
-} from "./stats.js?v=20260919b";
-import { TYPES } from "./types.js?v=20260919b";
-import { calculateDamage } from "./damage.js?v=20260919b";
+} from "./stats.js?v=20260919d";
+import { TYPES } from "./types.js?v=20260919d";
+import { calculateDamage } from "./damage.js?v=20260919d";
 
 const HISTORY_KEY = "damekei-history-v1";
 const HISTORY_MAX = 40;
@@ -489,6 +490,38 @@ function openNaturePicker(side) {
   });
 }
 
+function swapSides() {
+  const pairs = [
+    ["atk", "def"],
+    ["atkItem", "defItem"],
+    ["atkEvs", "defEvs"],
+    ["atkNature", "defNature"],
+    ["atkAbility", "defAbility"],
+    ["atkRanks", "defRanks"],
+  ];
+  for (const [a, b] of pairs) {
+    const tmp = state[a];
+    state[a] = state[b];
+    state[b] = tmp;
+  }
+  // 異常状態も入れ替え
+  const atkSt = $("atk-status");
+  const defSt = $("def-status");
+  if (atkSt && defSt) {
+    const t = atkSt.value;
+    atkSt.value = defSt.value;
+    defSt.value = t;
+  }
+  syncItemForSide("atk");
+  syncItemForSide("def");
+  clearMoveIfNotLearnable();
+  renderSlot("atk");
+  renderSlot("def");
+  updateItemBtns();
+  updateMoveBtn();
+  recalc();
+}
+
 function selectPokemon(side, poke) {
   state[side] = poke;
   state[`${side}Ability`] = poke.abilities?.[0] || "";
@@ -595,10 +628,10 @@ function openMovePicker() {
           <option value="変化">変化</option>
         </select>
       </div>
-      <label class="check-inline"><input type="checkbox" id="move-stab-only" ${atkTypes.length ? "checked" : ""} ${atkTypes.length ? "" : "disabled"} /> 攻撃側タイプ一致技のみ</label>
+      <label class="check-inline"><input type="checkbox" id="move-stab-only" ${atkTypes.length ? "" : "disabled"} /> 攻撃側タイプ一致技のみ</label>
       <div class="ability-note">${
         learnableSet
-          ? `${state.atk.name} の覚え技 ${learnableSet.size} 件（チャンピオンズデータ準拠）`
+          ? `${state.atk.name} の覚え技 ${learnableSet.size} 件（Champions覚え技）`
           : "覚え技データなし → 全技から選択"
       }</div>
     </div>
@@ -659,14 +692,15 @@ function openMovePicker() {
 function openItemPicker(side) {
   const poke = state[side];
   if (isMegaPokemon(poke)) {
+    state[side === "atk" ? "atkItem" : "defItem"] = "メガストーン";
+    updateItemBtns();
     openModal(side === "atk" ? "攻撃側の持ち物" : "防御側の持ち物", `
       <div class="history-empty">
         ${poke.name} はメガシンカ済みのため<br/>
-        持ち物は <strong>メガストーン</strong> 固定です
+        持ち物は <strong>メガストーン</strong> 固定です<br/>
+        <span style="font-size:0.85em;opacity:.8">（選択・変更できません）</span>
       </div>
     `);
-    state[side === "atk" ? "atkItem" : "defItem"] = "メガストーン";
-    updateItemBtns();
     return;
   }
   openModal(side === "atk" ? "攻撃側の持ち物" : "防御側の持ち物", `
@@ -700,6 +734,13 @@ function openItemPicker(side) {
       .join("");
     $("item-list").querySelectorAll(".list-item").forEach((el) => {
       el.addEventListener("click", () => {
+        if (isMegaPokemon(state[side])) {
+          state[side === "atk" ? "atkItem" : "defItem"] = "メガストーン";
+          updateItemBtns();
+          closeModal();
+          recalc();
+          return;
+        }
         if (side === "atk") state.atkItem = el.dataset.name;
         else state.defItem = el.dataset.name;
         updateItemBtns();
@@ -732,6 +773,112 @@ function updateMoveBtn() {
     <div class="sub">${m.type} / ${m.category}　威力 ${m.power ?? "-"}　命中 ${m.accuracy ?? "-"}</div>`;
 }
 
+function sideSpeedInfo(side) {
+  const poke = state[side];
+  if (!poke) return null;
+  const stats = calcAllStats(poke.baseStats, state[`${side}Evs`], state[`${side}Nature`]);
+  const rank = state[`${side}Ranks`]?.spe || 0;
+  let spe = applyRank(stats.spe, rank);
+  const item = state[side === "atk" ? "atkItem" : "defItem"] || "なし";
+  const status = $(side === "atk" ? "atk-status" : "def-status")?.value || "なし";
+  const ability = state[`${side}Ability`] || "";
+  const mods = [];
+  if (item === "こだわりスカーフ") {
+    spe = Math.floor(spe * 1.5);
+    mods.push("スカーフ×1.5");
+  }
+  if (status === "まひ" && ability !== "じゅうなん") {
+    spe = Math.floor(spe * 0.5);
+    mods.push("まひ×0.5");
+  }
+  if (ability === "かるわざ" && (item === "なし" || !item)) {
+    spe = Math.floor(spe * 2);
+    mods.push("かるわざ×2");
+  }
+  return {
+    name: poke.name,
+    raw: stats.spe,
+    rank,
+    spe,
+    mods,
+    item,
+    scarfSpe: Math.floor(applyRank(stats.spe, rank) * 1.5),
+  };
+}
+
+function movePriorityHint(move) {
+  if (!move) return null;
+  const text = `${move.effect || ""} ${move.target || ""}`;
+  const m = text.match(/優先度\s*\+?\s*(-?\d+)/);
+  return m ? Number(m[1]) : 0;
+}
+
+function updateSpeedPanel() {
+  const el = $("speed-body");
+  if (!el) return;
+  const atk = sideSpeedInfo("atk");
+  const def = sideSpeedInfo("def");
+  if (!atk || !def) {
+    el.textContent = "攻撃・防御を選ぶと表示";
+    return;
+  }
+
+  let verdict;
+  if (atk.spe > def.spe) verdict = `攻撃側が先攻（+${atk.spe - def.spe}）`;
+  else if (atk.spe < def.spe) verdict = `防御側が先攻（防御が +${def.spe - atk.spe}）`;
+  else verdict = "同速（乱数で先攻）";
+
+  const scarfNote =
+    atk.item === "こだわりスカーフ"
+      ? ""
+      : atk.scarfSpe > def.spe
+        ? `攻がスカーフなら ${atk.scarfSpe} で先攻`
+        : atk.scarfSpe === def.spe
+          ? `攻がスカーフなら ${atk.scarfSpe} で同速`
+          : `攻がスカーフでも ${atk.scarfSpe} ＜ 防 ${def.spe}`;
+
+  const defScarfed = Math.floor(
+    applyRank(
+      calcAllStats(state.def.baseStats, state.defEvs, state.defNature).spe,
+      state.defRanks?.spe || 0
+    ) * 1.5
+  );
+  const defScarfNote =
+    def.item === "こだわりスカーフ"
+      ? ""
+      : defScarfed > atk.spe
+        ? `防がスカーフなら ${defScarfed} で防御先攻`
+        : defScarfed === atk.spe
+          ? `防がスカーフなら ${defScarfed} で同速`
+          : `防がスカーフでも ${defScarfed} ＜ 攻 ${atk.spe}`;
+
+  const pri = movePriorityHint(state.move);
+  el.innerHTML = `
+    <div class="speed-row">
+      <span>攻 ${atk.name}</span>
+      <strong>${atk.spe}</strong>
+      <span class="speed-mods">${atk.raw}${atk.rank ? ` ランク${atk.rank > 0 ? "+" : ""}${atk.rank}` : ""}${
+        atk.mods.length ? ` / ${atk.mods.join(" ")}` : ""
+      }</span>
+    </div>
+    <div class="speed-row">
+      <span>防 ${def.name}</span>
+      <strong>${def.spe}</strong>
+      <span class="speed-mods">${def.raw}${def.rank ? ` ランク${def.rank > 0 ? "+" : ""}${def.rank}` : ""}${
+        def.mods.length ? ` / ${def.mods.join(" ")}` : ""
+      }</span>
+    </div>
+    <div class="speed-verdict">${verdict}</div>
+    ${scarfNote ? `<div class="speed-whatif">${scarfNote}</div>` : ""}
+    ${defScarfNote ? `<div class="speed-whatif">${defScarfNote}</div>` : ""}
+    ${
+      state.move
+        ? `<div class="speed-whatif">選択技の優先度: ${pri > 0 ? "+" : ""}${pri}（同優先度なら素早さ順）</div>`
+        : ""
+    }
+  `;
+}
+
 function updateItemBtns() {
   const atkMega = isMegaPokemon(state.atk);
   const defMega = isMegaPokemon(state.def);
@@ -739,11 +886,17 @@ function updateItemBtns() {
   if (defMega) state.defItem = "メガストーン";
   const atk = state.items.find((x) => x.name === state.atkItem);
   const def = state.items.find((x) => x.name === state.defItem);
-  $("atk-item-btn").innerHTML = `<div class="title">${state.atkItem}${atkMega ? " 🔒" : ""}</div><div class="sub">${
-    atkMega ? "メガシンカ固定" : (atk?.effect || "").slice(0, 60)
+  const atkBtn = $("atk-item-btn");
+  const defBtn = $("def-item-btn");
+  atkBtn.classList.toggle("locked", atkMega);
+  defBtn.classList.toggle("locked", defMega);
+  atkBtn.setAttribute("aria-disabled", atkMega ? "true" : "false");
+  defBtn.setAttribute("aria-disabled", defMega ? "true" : "false");
+  atkBtn.innerHTML = `<div class="title">${state.atkItem}${atkMega ? " 🔒" : ""}</div><div class="sub">${
+    atkMega ? "メガシンカ固定・変更不可" : (atk?.effect || "").slice(0, 60)
   }</div>`;
-  $("def-item-btn").innerHTML = `<div class="title">${state.defItem}${defMega ? " 🔒" : ""}</div><div class="sub">${
-    defMega ? "メガシンカ固定" : (def?.effect || "").slice(0, 60)
+  defBtn.innerHTML = `<div class="title">${state.defItem}${defMega ? " 🔒" : ""}</div><div class="sub">${
+    defMega ? "メガシンカ固定・変更不可" : (def?.effect || "").slice(0, 60)
   }</div>`;
 }
 
@@ -751,6 +904,9 @@ function recalc() {
   const box = $("result");
   if (!box) return;
   try {
+    if (isMegaPokemon(state.atk)) state.atkItem = "メガストーン";
+    if (isMegaPokemon(state.def)) state.defItem = "メガストーン";
+    updateSpeedPanel();
     if (!state.atk || !state.def || !state.move) {
       box.innerHTML = `<div class="result-sub">ポケモンと技を選ぶと計算されます</div>`;
       if ($("result-mini")) $("result-mini").textContent = "未計算";
@@ -934,6 +1090,7 @@ function wire() {
   on("move-btn", "click", openMovePicker);
   on("atk-item-btn", "click", () => openItemPicker("atk"));
   on("def-item-btn", "click", () => openItemPicker("def"));
+  on("swap-btn", "click", swapSides);
   on("history-btn", "click", openHistoryModal);
   on("modal-close", "click", closeModal);
   on("modal", "click", (e) => {

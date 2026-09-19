@@ -10,7 +10,7 @@
   <link rel="apple-touch-icon" href="./icons/icon.png" />
   <link rel="manifest" href="./manifest.webmanifest" />
   <title>ダメ計</title>
-  <link rel="stylesheet" href="./css/style.css?v=20260919b" />
+  <link rel="stylesheet" href="./css/style.css?v=20260919d" />
 </head>
 <body>
   <div class="app screen">
@@ -21,6 +21,7 @@
         <p>Lv50 / IV31　努力値合計66・1項32　HP=種族+75+努力 / 他=種族+20+努力×性格</p>
       </div>
       <div class="header-actions">
+        <button type="button" class="icon-btn" id="swap-btn" title="攻撃と防御を入れ替え">攻守交代</button>
         <button type="button" class="icon-btn" id="history-btn" title="計算履歴">履歴</button>
         <div class="result-mini" id="result-mini">未計算</div>
       </div>
@@ -106,6 +107,11 @@
           <label><input type="checkbox" id="hpNotFull" />相手HP非満タン</label>
           <label><input type="checkbox" id="movingLast" />後攻(アナライズ)</label>
         </div>
+
+        <div class="speed-panel" id="speed-panel">
+          <div class="speed-title">素早さ比較</div>
+          <div class="speed-body" id="speed-body">攻撃・防御を選ぶと表示</div>
+        </div>
       </section>
 
       <section class="panel result-panel">
@@ -127,6 +133,6 @@
     </div>
   </div>
 
-  <script type="module" src="./js/app.js?v=20260919b"></script>
+  <script type="module" src="./js/app.js?v=20260919d"></script>
 </body>
 </html>

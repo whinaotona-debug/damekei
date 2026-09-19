@@ -46,6 +46,13 @@ async function main() {
   const ours = JSON.parse(readFileSync(join(ROOT, "data", "pokemon.json"), "utf8"));
   const ourMoves = JSON.parse(readFileSync(join(ROOT, "data", "moves.json"), "utf8"));
   const ourMoveNames = new Set(ourMoves.map((m) => m.name));
+  const nfkcToOur = new Map();
+  for (const m of ourMoves) {
+    const key = String(m.name)
+      .normalize("NFKC")
+      .replace(/[\s　]/g, "");
+    if (!nfkcToOur.has(key)) nfkcToOur.set(key, m.name);
+  }
 
   // en id -> ja move name
   const moveIdToJa = new Map();
@@ -64,7 +71,7 @@ async function main() {
   // Find learnset id for a rotom poke (megas/forms may share base)
   function learnsetIdFor(rotomPoke) {
     if (!rotomPoke) return null;
-    if (learnsetsEn[rotomPoke.id]) return rotomPoke.id;
+    if (learnsetsEn[rotomPoke.id]?.length) return rotomPoke.id;
     if (rotomPoke.baseSpecies) {
       const base = rotomPokes.find(
         (x) => x.name === rotomPoke.baseSpecies || x.id === rotomPoke.baseSpecies.toLowerCase().replace(/[^a-z0-9]/g, "")
@@ -73,16 +80,16 @@ async function main() {
       const baseEntry =
         rotomPokes.find((x) => x.name === rotomPoke.baseSpecies) ||
         rotomPokes.find((x) => x.id === String(rotomPoke.baseSpecies).toLowerCase());
-      if (baseEntry && learnsetsEn[baseEntry.id]) return baseEntry.id;
+      if (baseEntry && learnsetsEn[baseEntry.id]?.length) return baseEntry.id;
       // try id from baseSpecies name
       const guess = String(rotomPoke.baseSpecies)
         .toLowerCase()
         .replace(/[^a-z0-9]/g, "");
-      if (learnsetsEn[guess]) return guess;
+      if (learnsetsEn[guess]?.length) return guess;
     }
     // mega: strip mega from id
     const stripped = rotomPoke.id.replace(/mega$/, "").replace(/megax$/, "").replace(/megay$/, "");
-    if (learnsetsEn[stripped]) return stripped;
+    if (learnsetsEn[stripped]?.length) return stripped;
     return null;
   }
 
@@ -159,16 +166,41 @@ async function main() {
       if (learnsetsEn[guess]) id = guess;
     }
 
-    if (!id || !learnsetsEn[id]) {
-      // last resort: mega strip Japanese and find
+    if (!id || !learnsetsEn[id]?.length) {
+      // last resort: mega strip Japanese and find (keep メス/オス)
       if (poke.name.startsWith("メガ")) {
         const baseJa = stripMega(poke.name);
         const baseRotom = byJa.get(baseJa) || byNormJa.get(norm(baseJa));
-        if (baseRotom && learnsetsEn[baseRotom.id]) id = baseRotom.id;
+        if (baseRotom && learnsetsEn[baseRotom.id]?.length) id = baseRotom.id;
       }
     }
 
-    if (!id || !learnsetsEn[id]) {
+    // Mega with empty dedicated learnset: use gendered base (ニャオニクス(メス) etc.)
+    if (
+      poke.name.startsWith("メガ") &&
+      poke.name !== "メガニウム" &&
+      (!id || !learnsetsEn[id]?.length)
+    ) {
+      const baseJa = stripMega(poke.name);
+      const baseRotom = byJa.get(baseJa) || byNormJa.get(norm(baseJa));
+      if (baseRotom && learnsetsEn[baseRotom.id]?.length) id = baseRotom.id;
+    } else if (
+      poke.name.startsWith("メガ") &&
+      poke.name.includes("(") &&
+      id &&
+      learnsetsEn[id]?.length
+    ) {
+      // If mega id resolved but was empty earlier we already fixed; if mega id
+      // pointed at wrong gender via baseSpecies, prefer exact JA base when mega list empty
+      const megaList = learnsetsEn[rotom?.id];
+      if (rotom && (!megaList || !megaList.length)) {
+        const baseJa = stripMega(poke.name);
+        const baseRotom = byJa.get(baseJa);
+        if (baseRotom && learnsetsEn[baseRotom.id]?.length) id = baseRotom.id;
+      }
+    }
+
+    if (!id || !learnsetsEn[id]?.length) {
       missing.push(poke.name);
       out[poke.name] = [];
       continue;
@@ -177,7 +209,12 @@ async function main() {
     const jaMoves = [];
     for (const enId of learnsetsEn[id]) {
       const ja = moveIdToJa.get(enId);
-      if (ja && ourMoveNames.has(ja)) jaMoves.push(ja);
+      if (!ja || ja === "(技なし)") continue;
+      // NFKC match: １０まんボルト → 10まんボルト, ＤＤラリアット → DDラリアット
+      const canon =
+        (ourMoveNames.has(ja) && ja) ||
+        nfkcToOur.get(String(ja).normalize("NFKC").replace(/[\s　]/g, ""));
+      if (canon) jaMoves.push(canon);
     }
     // unique sorted
     out[poke.name] = [...new Set(jaMoves)].sort((a, b) => a.localeCompare(b, "ja"));

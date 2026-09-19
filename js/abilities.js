@@ -6,7 +6,9 @@
 export const ABILITY_NOTES = {
   メガソーラー: "技使用時のみ晴れ扱い（ウェザーボール炎化・炎1.5/水0.5・ソーラー半減なし）",
   ばけのかわ: "1発目で破れ・最大HPの1/8削り → 以降は通常（自動でKO計算に反映）",
-  マルチスケイル: "HP満タン時、受けるダメージ半減",
+  マルチスケイル: "HP満タン時のみ半減（1発目だけ・満タン復帰しない限り再発動しない想定でKO計算）",
+  ファントムガード: "HP満タン時のみ半減（マルチスケイルと同系統）",
+  がんじょう: "HP満タン時の一撃必殺をHP1で耐える（1回）",
   へんげんじざい: "技タイプに変化してSTAB",
   リベロ: "技タイプに変化してSTAB",
   じきゅうりょく: "被弾ごとに防御+1",
@@ -226,9 +228,9 @@ export function modifyDefensiveDamage({
     m *= 1.25;
     notes.push("かんそうはだ: ほのお×1.25");
   }
-  if (defAb === "マルチスケイル" && hpFull) {
+  if ((defAb === "マルチスケイル" || defAb === "ファントムガード") && hpFull) {
     m *= 0.5;
-    notes.push("マルチスケイル: HP満タン×0.5");
+    notes.push(`${defAb}: HP満タン×0.5（この発のみ）`);
   }
   if ((defAb === "フィルター" || defAb === "ハードロック" || defAb === "プリズムアーマー") && mult > 1) {
     // mult here is type mult already applied outside - this function receives post-type damage factor separately

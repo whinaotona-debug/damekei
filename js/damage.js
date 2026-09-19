@@ -1,5 +1,5 @@
-import { typeEffectiveness, effectivenessLabel } from "./types.js?v=20260919b";
-import { applyRank, calcAllStats } from "./stats.js?v=20260919b";
+import { typeEffectiveness, effectivenessLabel } from "./types.js?v=20260919d";
+import { applyRank, calcAllStats } from "./stats.js?v=20260919d";
 import {
   isProteanLike,
   effectiveWeatherForAttacker,
@@ -10,7 +10,7 @@ import {
   criticalBlocked,
   criticalMultiplier,
   ignoresAbility,
-} from "./abilities.js?v=20260919b";
+} from "./abilities.js?v=20260919d";
 
 const LEVEL = 50;
 
@@ -577,6 +577,22 @@ export function calculateDamage(input) {
     details.push("防御側 ばけのかわ: 1発目で破れ・最大HPの1/8ダメージ → 2発目以降に技ダメージ");
   }
 
+  const hasMultiscale =
+    (defenderAbility === "マルチスケイル" || defenderAbility === "ファントムガード") &&
+    !ignoresAbility(attackerAbility) &&
+    !hpNotFull;
+  if (hasMultiscale) {
+    details.push(
+      `防御側 ${defenderAbility}: HP満タンの1発目のみ×0.5（2発目以降は通常・食べ残しで満タンに戻っても計算上は再発動しない）`
+    );
+  }
+
+  const hasSturdy =
+    defenderAbility === "がんじょう" && !ignoresAbility(attackerAbility) && !hpNotFull;
+  if (hasSturdy) {
+    details.push("防御側 がんじょう: HP満タンからのひんし技をHP1で耐える（1回）");
+  }
+
   const atkWeather = effectiveWeatherForAttacker(weather, attackerAbility);
   const wallActive =
     (move.category === "物理" && (screens.reflect || screens.auroraVeil)) ||
@@ -591,7 +607,13 @@ export function calculateDamage(input) {
   }
 
   function damageAt(defRankBonus, hitPower, rollIndex, opts = {}) {
-    const { firstHitOfBattle = true, isCrit = false } = opts;
+    const {
+      firstHitOfBattle = true,
+      isCrit = false,
+      hpFull = !hpNotFull,
+      berryActive = true,
+      sturdyActive = false,
+    } = opts;
     const defRanksAdj = {
       ...defender.ranks,
       def: Math.min(6, (defender.ranks.def || 0) + defRankBonus),
@@ -605,12 +627,12 @@ export function calculateDamage(input) {
       attackerAbility,
       defenderTypes: defender.types,
       weather: atkWeather,
-      hpFull: !hpNotFull,
+      hpFull,
       disguiseIntact: hasDisguise && firstHitOfBattle,
       moldBreak: ignoresAbility(attackerAbility),
     });
     if (defMod.blockHit || defMod.immune) {
-      return { damage: 0, a: 0, d: 0, atkName: "-", defName: "-", stab: 1, notes: defMod.notes, blocked: true };
+      return { damage: 0, a: 0, d: 0, atkName: "-", defName: "-", stab: 1, notes: defMod.notes, blocked: true, berryUsed: false };
     }
 
     const { a: a0, d, atkName, defName } = getAttackDefense(
@@ -649,30 +671,73 @@ export function calculateDamage(input) {
       x = chainMod(x, 0.5);
     }
     if (wallActive && !isCrit && defenderAbility !== "すりぬけ") x = pokeRound((x * 2) / 3);
-    const berry = RESIST_BERRIES[defenderItem];
-    if (berry && berry === moveType && typeMult > 1) x = chainMod(x, 0.5);
-    if (defenderItem === "ホズのみ" && moveType === "ノーマル") x = chainMod(x, 0.5);
-    return { damage: Math.max(1, x), a, d, atkName, defName, stab, notes: [...defMod.notes, ...atkMod.notes], blocked: false };
+    let berryUsed = false;
+    if (berryActive) {
+      const berry = RESIST_BERRIES[defenderItem];
+      if (berry && berry === moveType && typeMult > 1) {
+        x = chainMod(x, 0.5);
+        berryUsed = true;
+      }
+      if (defenderItem === "ホズのみ" && moveType === "ノーマル") {
+        x = chainMod(x, 0.5);
+        berryUsed = true;
+      }
+    }
+    let damage = Math.max(1, x);
+    const notes = [...defMod.notes, ...atkMod.notes];
+    if (sturdyActive && damage >= defStats.hp) {
+      damage = defStats.hp - 1;
+      notes.push("がんじょう: HP1で耐えた");
+    }
+    return { damage, a, d, atkName, defName, stab, notes, blocked: false, berryUsed };
   }
 
-  function rollsForMoveUse(startingStaminaStacks, disguiseAlreadyBroken = false, isCrit = false) {
+  /**
+   * @param {number} startingStaminaStacks
+   * @param {{
+   *   isCrit?: boolean,
+   *   disguiseBroken?: boolean,
+   *   multiscaleBroken?: boolean,
+   *   berryGone?: boolean,
+   *   sturdyGone?: boolean,
+   * }} opts
+   */
+  function rollsForMoveUse(startingStaminaStacks, opts = {}) {
+    const {
+      isCrit = false,
+      disguiseBroken: startDisguiseBroken = false,
+      multiscaleBroken: startMsBroken = false,
+      berryGone: startBerryGone = false,
+      sturdyGone: startSturdyGone = false,
+    } = opts;
     const out = [];
     const disguiseChip = Math.floor(defStats.hp / 8);
     for (let rollIndex = 0; rollIndex <= 15; rollIndex++) {
       let sum = 0;
       let stacks = startingStaminaStacks;
-      let broken = disguiseAlreadyBroken || !hasDisguise;
+      let disguiseBroken = startDisguiseBroken || !hasDisguise;
+      let multiscaleBroken = startMsBroken || !hasMultiscale;
+      let berryGone = startBerryGone;
+      let sturdyGone = startSturdyGone || !hasSturdy;
       for (let i = 0; i < hits.max; i++) {
         const hpwr = hits.powers ? hits.powers[i] : power;
         const r = damageAt(stamina ? stacks : 0, hpwr, rollIndex, {
-          firstHitOfBattle: hasDisguise && !broken,
+          firstHitOfBattle: hasDisguise && !disguiseBroken,
           isCrit: forceCrit || isCrit,
+          hpFull: hasMultiscale && !multiscaleBroken,
+          berryActive: !berryGone,
+          sturdyActive: hasSturdy && !sturdyGone,
         });
-        if (r.blocked && hasDisguise && !broken) {
-          broken = true;
+        if (r.blocked && hasDisguise && !disguiseBroken) {
+          disguiseBroken = true;
+          multiscaleBroken = true;
+          sturdyGone = true;
           sum += disguiseChip;
         } else {
           sum += r.damage;
+          if (hasMultiscale && !multiscaleBroken) multiscaleBroken = true;
+          if (r.berryUsed) berryGone = true;
+          if (hasSturdy && !sturdyGone) sturdyGone = true;
           if (stamina && !r.blocked) stacks = Math.min(6, stacks + 1);
         }
       }
@@ -687,16 +752,37 @@ export function calculateDamage(input) {
     details.push(`回復込み表示: たべのこし等 −${healPerTurn}/ターン（参考ダメ計と同じ）`);
   }
 
-  function packResult(connectingRolls, label) {
-    // 表示は破れたあとの技ダメージ。KOは化けの皮1発目（1/8）込み
-    const rawMin = Math.min(...connectingRolls);
-    const rawMax = Math.max(...connectingRolls);
+  function packResult(isCrit, label) {
+    // 表示: 化けの皮は破れた後の技ダメ。マルチスケイルは満タン1発目込み。
+    const displayRolls = rollsForMoveUse(0, {
+      isCrit,
+      disguiseBroken: true,
+      multiscaleBroken: !hasMultiscale,
+      berryGone: false,
+      sturdyGone: !hasSturdy,
+    });
+    const laterRolls = rollsForMoveUse(0, {
+      isCrit,
+      disguiseBroken: true,
+      multiscaleBroken: true,
+      berryGone: true,
+      sturdyGone: true,
+    });
+    const rawMin = Math.min(...displayRolls);
+    const rawMax = Math.max(...displayRolls);
     const min = Math.max(0, rawMin - healPerTurn);
     const max = Math.max(0, rawMax - healPerTurn);
     const percentMin = Math.floor((min / hp) * 1000) / 10;
     const percentMax = Math.floor((max / hp) * 1000) / 10;
-    const ko = analyzeKoWithHeal(connectingRolls, hp, healPerTurn, {
+    const splitLater =
+      hasDisguise ||
+      hasMultiscale ||
+      hasSturdy ||
+      !!RESIST_BERRIES[defenderItem] ||
+      defenderItem === "ホズのみ";
+    const ko = analyzeKoWithHeal(displayRolls, hp, healPerTurn, {
       disguise: hasDisguise,
+      laterRolls: splitLater ? laterRolls : null,
     });
     return {
       label,
@@ -704,7 +790,7 @@ export function calculateDamage(input) {
       rawMax,
       min,
       max,
-      rolls: connectingRolls,
+      rolls: displayRolls,
       percentMin,
       percentMax,
       koText: ko.text,
@@ -718,6 +804,9 @@ export function calculateDamage(input) {
   const sample = damageAt(0, hits.powers ? hits.powers[0] : power, 15, {
     firstHitOfBattle: false,
     isCrit: forceCrit || wantCritOnly,
+    hpFull: hasMultiscale,
+    berryActive: true,
+    sturdyActive: hasSturdy,
   });
   details.push(`攻撃側能力(${sample.atkName}): ${sample.a} / 防御側能力(${sample.defName}): ${sample.d}`);
   details.push(`STAB: ×${sample.stab}${proteanLike ? `（${attackerAbility}後）` : ""}`);
@@ -736,16 +825,16 @@ export function calculateDamage(input) {
   let normalPack = null;
   let critPack = null;
   if (forceCrit) {
-    normalPack = packResult(rollsForMoveUse(0, true, true), "急所（必中）");
+    normalPack = packResult(true, "急所（必中）");
     details.push(`急所（必中） 生ダメージ: ${normalPack.rawMin}〜${normalPack.rawMax}`);
   } else {
-    normalPack = packResult(rollsForMoveUse(0, true, false), "通常");
+    normalPack = packResult(false, "通常");
     details.push(`通常 生ダメージ: ${normalPack.rawMin}〜${normalPack.rawMax}`);
     if (healPerTurn > 0) {
       details.push(`通常 表示（回復−${healPerTurn}）: ${normalPack.min}〜${normalPack.max}`);
     }
     if (critAllowed) {
-      critPack = packResult(rollsForMoveUse(0, true, true), "急所");
+      critPack = packResult(true, "急所");
       details.push(`急所 生ダメージ: ${critPack.rawMin}〜${critPack.rawMax}`);
       if (healPerTurn > 0) {
         details.push(`急所 表示（回復−${healPerTurn}）: ${critPack.min}〜${critPack.max}`);
@@ -760,7 +849,13 @@ export function calculateDamage(input) {
       hp,
       stamina: true,
       rollsForMoveUse: (stacks, turnIndex = 0) =>
-        rollsForMoveUse(stacks, !hasDisguise || turnIndex > 0, false),
+        rollsForMoveUse(stacks, {
+          isCrit: false,
+          disguiseBroken: turnIndex > 0 || !hasDisguise,
+          multiscaleBroken: turnIndex > 0 || !hasMultiscale,
+          berryGone: turnIndex > 0,
+          sturdyGone: turnIndex > 0 || !hasSturdy,
+        }),
       maxTurns: 8,
     });
     staminaKoNote = `じきゅうりょく込みKO: ${koInfo.text}`;
@@ -817,14 +912,16 @@ function endOfTurnHealAmount(defender, maxHp) {
 /**
  * 生ダメージ乱数とターン間回復から、倒せる最速発数の確定/乱数を求める。
  * disguise: 1発目は最大HPの1/8（化けの皮破れ）、2発目以降が connectingRolls
+ * laterRolls: 2発目以降の乱数（マルチスケイル剥がし後など）。未指定なら connectingRolls を継続使用
  * 食べ残し等で削り切れない場合は「倒せない」
  */
 function analyzeKoWithHeal(connectingRolls, hp, healPerTurn, opts = {}) {
   const disguise = !!opts.disguise;
+  const laterRolls = opts.laterRolls || null;
   const maxTurns = opts.maxTurns ?? 64;
   const chip = Math.floor(hp / 8);
 
-  if (!canEventuallyKo(connectingRolls, hp, healPerTurn, disguise, chip)) {
+  if (!canEventuallyKo(connectingRolls, hp, healPerTurn, disguise, chip, laterRolls)) {
     return { text: "倒せない", chance: null, hits: null, guaranteed: false };
   }
 
@@ -834,7 +931,7 @@ function analyzeKoWithHeal(connectingRolls, hp, healPerTurn, opts = {}) {
       hp,
       healPerTurn,
       n,
-      { disguise, chip }
+      { disguise, chip, laterRolls }
     );
     if (!possible) continue;
     if (guaranteed) {
@@ -857,32 +954,33 @@ function formatKoChance(chance01) {
 }
 
 /** 最大乱数でも回復に負ける／削れない場合 false */
-function canEventuallyKo(connectingRolls, hp, healPerTurn, disguise, chip) {
-  const maxD = Math.max(...connectingRolls);
+function canEventuallyKo(connectingRolls, hp, healPerTurn, disguise, chip, laterRolls = null) {
+  const later = laterRolls || connectingRolls;
+  const laterMax = Math.max(...later);
   let h = hp;
-  let broken = !disguise;
   for (let t = 0; t < 200; t++) {
-    const dmg = disguise && !broken ? chip : maxD;
-    if (disguise && !broken) broken = true;
+    const dmg = disguise && t === 0 ? chip : t === 0 ? Math.max(...connectingRolls) : laterMax;
     h -= dmg;
     if (h <= 0) return true;
     if (healPerTurn > 0) h = Math.min(hp, h + healPerTurn);
-    // 破れたあと技ダメが回復以下なら永遠に削れない
-    if (broken && maxD <= healPerTurn) return false;
+    if (t >= 1 && laterMax <= healPerTurn) return false;
   }
   return false;
 }
 
-function damageForTurn(connectingRolls, rollIndex, turn, disguise, chip) {
+function damageForTurn(firstRolls, laterRolls, rollIndex, turn, disguise, chip) {
   if (disguise && turn === 0) return chip;
-  return connectingRolls[rollIndex];
+  if (turn === 0) return firstRolls[rollIndex];
+  return (laterRolls || firstRolls)[rollIndex];
 }
 
-/** n発で倒せる割合（1発目化けの皮対応） */
+/** n発で倒せる割合（1発目化けの皮 / マルチスケイル剥がし対応） */
 function koChanceWithHeal(connectingRolls, hp, healPerTurn, n, opts = {}) {
   const disguise = !!opts.disguise;
+  const laterRolls = opts.laterRolls || null;
   const chip = opts.chip ?? Math.floor(hp / 8);
   const len = connectingRolls.length;
+  const laterLen = (laterRolls || connectingRolls).length;
 
   if (n <= 5) {
     let ko = 0;
@@ -893,13 +991,16 @@ function koChanceWithHeal(connectingRolls, hp, healPerTurn, n, opts = {}) {
         if (hpLeft <= 0) ko += 1;
         return;
       }
-      for (let i = 0; i < len; i++) {
-        const dmg = damageForTurn(connectingRolls, i, turn, disguise, chip);
+      const pool = turn === 0 ? connectingRolls : laterRolls || connectingRolls;
+      const poolLen = turn === 0 ? len : laterLen;
+      for (let i = 0; i < poolLen; i++) {
+        const dmg = damageForTurn(connectingRolls, laterRolls, i, turn, disguise, chip);
         let h = hpLeft - dmg;
         if (h <= 0) {
-          const rest = len ** (n - turn - 1);
-          ko += rest;
-          total += rest;
+          const rest = poolLen ** (n - turn - 1); // approx; use len for remaining
+          const restFactor = len ** (n - turn - 1);
+          ko += restFactor;
+          total += restFactor;
         } else {
           if (healPerTurn > 0 && turn < n - 1) {
             h = Math.min(hp, h + healPerTurn);
@@ -918,11 +1019,12 @@ function koChanceWithHeal(connectingRolls, hp, healPerTurn, n, opts = {}) {
   }
 
   // nが大きい: 最小/最大ダメージ経路で判定
-  let hMin = hp; // 残HP（攻撃側ワースト＝最小ダメ）
-  let hMax = hp; // 残HP（攻撃側ベスト＝最大ダメ）→ 小さいほどよく削れる
+  let hMin = hp;
+  let hMax = hp;
   for (let t = 0; t < n; t++) {
-    const minD = disguise && t === 0 ? chip : connectingRolls[0];
-    const maxD = disguise && t === 0 ? chip : connectingRolls[len - 1];
+    const pool = t === 0 ? connectingRolls : laterRolls || connectingRolls;
+    const minD = disguise && t === 0 ? chip : pool[0];
+    const maxD = disguise && t === 0 ? chip : pool[pool.length - 1];
     hMin -= minD;
     hMax -= maxD;
     if (t < n - 1 && healPerTurn > 0) {
