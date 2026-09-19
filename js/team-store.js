@@ -1,7 +1,7 @@
 /**
  * Shared team storage for ダメ計 tools (Champions).
  */
-import { emptyEvs, NATURES } from "./stats.js?v=20260919e";
+import { emptyEvs, NATURES } from "./stats.js?v=20260919f";
 
 export const TEAMS_KEY = "damekei-teams-v1";
 export const NOTES_KEY = "damekei-matchup-notes-v1";

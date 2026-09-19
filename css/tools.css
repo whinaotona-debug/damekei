@@ -58,7 +58,7 @@ body.tools-page {
 
 .member-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 10px;
 }
 .member-card {
@@ -66,7 +66,7 @@ body.tools-page {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  padding: 10px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -79,12 +79,17 @@ body.tools-page {
 .slot-no {
   font-weight: 800;
   color: var(--muted);
-  padding-top: 8px;
+  padding-top: 10px;
+  min-width: 1.6em;
 }
 .selector-btn.compact {
   flex: 1;
   text-align: left;
-  padding: 6px 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 8px;
 }
 .selector-btn.compact .k {
   font-size: 0.68rem;
@@ -92,56 +97,208 @@ body.tools-page {
 }
 .selector-btn.compact .title {
   font-weight: 700;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
 }
 .selector-btn.compact .sub {
   font-size: 0.72rem;
   color: var(--muted);
+  margin-top: 2px;
 }
-.member-meta {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-}
-.member-meta label {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  font-size: 0.72rem;
-  color: var(--muted);
-}
-.member-meta select {
-  padding: 4px;
-  border-radius: 6px;
-  border: 1px solid var(--line);
-}
-.ev-mini {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 4px;
-  font-size: 0.72rem;
-}
-.ev-mini label {
-  display: grid;
-  grid-template-columns: 1.4em 1fr 2em;
-  gap: 2px;
-  align-items: center;
-}
-.ev-mini input {
-  width: 100%;
-  padding: 2px 4px;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-}
-.ev-mini .stat-v { font-weight: 700; text-align: right; }
-.ev-sum { grid-column: 1 / -1; color: var(--muted); }
+.hint { color: var(--muted); font-size: 0.85rem; margin: 0; }
+.ev-sum { color: var(--muted); font-size: 0.8rem; }
 .ev-sum.warn { color: var(--bad); font-weight: 700; }
 .move-slots {
   display: grid;
   grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.member-card.empty {
+  border-style: dashed;
+  min-height: 120px;
+}
+.member-card.filled {
+  gap: 10px;
+}
+.poke-pick .title {
+  font-size: 1.05rem;
+}
+.big-hint {
+  padding: 12px 4px 4px;
+  line-height: 1.45;
+}
+.member-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  align-items: start;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.field-label { font-size: 0.75rem; color: var(--muted); }
+.field select {
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  font-size: 0.95rem;
+}
+.member-card .nature-btn {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 0.95rem;
+}
+.ev-block, .move-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ev-block-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 0.85rem;
+}
+.ev-presets {
+  display: flex;
+  flex-wrap: wrap;
   gap: 4px;
 }
-.hint { color: var(--muted); font-size: 0.85rem; margin: 0; }
+.ev-presets .ev-btn {
+  padding: 6px 8px;
+}
+.member-card .ev-cell label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  margin-bottom: 2px;
+}
+.member-card .ev-controls input {
+  min-height: 32px;
+  font-size: 0.95rem;
+  padding: 4px 6px;
+}
+.member-card .ev-btn {
+  min-height: 32px;
+  min-width: 36px;
+  font-size: 0.8rem;
+}
+.move-block > strong {
+  font-size: 0.85rem;
+}
+.move-slot .move-empty {
+  color: var(--accent);
+}
+.type-pill {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #fff;
+  background: #6a7a85;
+  margin-right: 4px;
+}
+.type-pill.type-ほのお { background: #e45c2b; }
+.type-pill.type-みず { background: #3a7fc4; }
+.type-pill.type-くさ { background: #4a9a4a; }
+.type-pill.type-でんき { background: #d4a017; }
+.type-pill.type-こおり { background: #5bb8d4; }
+.type-pill.type-かくとう { background: #c05030; }
+.type-pill.type-どく { background: #8a5aa8; }
+.type-pill.type-じめん { background: #b0894b; }
+.type-pill.type-ひこう { background: #7a9fd4; }
+.type-pill.type-エスパー { background: #d45a8a; }
+.type-pill.type-むし { background: #8aaa3a; }
+.type-pill.type-いわ { background: #a09060; }
+.type-pill.type-ゴースト { background: #6a5a9a; }
+.type-pill.type-ドラゴン { background: #5a6ac4; }
+.type-pill.type-あく { background: #5a5048; }
+.type-pill.type-はがね { background: #8a98a4; }
+.type-pill.type-フェアリー { background: #e080b0; }
+.type-pill.type-ノーマル { background: #8a9094; }
+
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1a2b33;
+  color: #fff;
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-weight: 700;
+  z-index: 50;
+  box-shadow: var(--shadow);
+}
+
+.tools-toolbar select {
+  min-width: min(100%, 220px);
+  flex: 1 1 180px;
+}
+.tools-toolbar input#team-name {
+  flex: 1 1 140px;
+}
+
+/* reuse damekei nature table in tools pages */
+.tools-page .nature-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+.tools-page .nature-table th,
+.tools-page .nature-table td {
+  border: 1px solid var(--line);
+  padding: 2px;
+  text-align: center;
+}
+.tools-page .nat-cell {
+  width: 100%;
+  border: none;
+  background: #fff;
+  padding: 8px 4px;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 0.75rem;
+}
+.tools-page .nat-cell:hover { background: #e8f3f8; }
+.tools-page .nat-cell.selected {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+}
+.tools-page .nat-cell.neutral {
+  margin: 2px;
+  width: auto;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+}
+.tools-page .up-h { color: #d32f2f; }
+.tools-page .down-h { color: #1565c0; white-space: nowrap; }
+.tools-page .neutral-row {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+.tools-page .filters .row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 6px;
+}
+.tools-page .check-inline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 0.82rem;
+}
 
 /* Matchup matrix */
 .matchup-layout {
