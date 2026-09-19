@@ -78,6 +78,19 @@ html, body {
   gap: 8px;
   min-width: 0;
 }
+.tool-nav.compact-nav {
+  margin-left: 0;
+}
+.tool-nav.compact-nav a {
+  text-decoration: none;
+  color: var(--ink);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 5px 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
 
 .main-grid {
   flex: 1;

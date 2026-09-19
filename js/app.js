@@ -16,9 +16,9 @@ import {
   totalEv,
   clampEvAssign,
   getNature,
-} from "./stats.js?v=20260919d";
-import { TYPES } from "./types.js?v=20260919d";
-import { calculateDamage } from "./damage.js?v=20260919d";
+} from "./stats.js?v=20260919e";
+import { TYPES } from "./types.js?v=20260919e";
+import { calculateDamage } from "./damage.js?v=20260919e";
 
 const HISTORY_KEY = "damekei-history-v1";
 const HISTORY_MAX = 40;
@@ -1124,7 +1124,9 @@ function wire() {
 async function main() {
   await loadData();
   wire();
+  applyQueryParams();
   updateItemBtns();
+  updateMoveBtn();
   // smoke: ensure ブリジュラス abilities present
   const b = state.pokemon.find((p) => p.name === "ブリジュラス");
   console.info("[ダメ計] loaded", {
@@ -1134,6 +1136,52 @@ async function main() {
     learnsets: Object.keys(state.learnsets).length,
     burijurasu: b?.abilities,
   });
+  recalc();
+}
+
+function applyQueryParams() {
+  const q = new URLSearchParams(location.search);
+  if (![...q.keys()].length) return;
+  const atkName = q.get("atk");
+  const defName = q.get("def");
+  const moveName = q.get("move");
+  if (atkName) {
+    const poke = state.pokemon.find((p) => p.name === atkName);
+    if (poke) {
+      state.atk = poke;
+      state.atkAbility = q.get("atkAbility") || poke.abilities?.[0] || "";
+      state.atkNature = q.get("atkNature") || "いじっぱり";
+      state.atkItem = q.get("atkItem") || "なし";
+      try {
+        state.atkEvs = { ...emptyEvs(), ...JSON.parse(q.get("atkEvs") || "{}") };
+      } catch {
+        state.atkEvs = emptyEvs();
+      }
+      state.atkRanks = emptyRanks();
+      renderSlot("atk");
+    }
+  }
+  if (defName) {
+    const poke = state.pokemon.find((p) => p.name === defName);
+    if (poke) {
+      state.def = poke;
+      state.defAbility = q.get("defAbility") || poke.abilities?.[0] || "";
+      state.defNature = q.get("defNature") || "ずぶとい";
+      state.defItem = q.get("defItem") || "なし";
+      try {
+        state.defEvs = { ...emptyEvs(), ...JSON.parse(q.get("defEvs") || "{}") };
+      } catch {
+        state.defEvs = emptyEvs();
+      }
+      state.defRanks = emptyRanks();
+      renderSlot("def");
+    }
+  }
+  if (moveName) {
+    state.move = state.moves.find((m) => m.name === moveName) || null;
+  }
+  syncItemForSide("atk");
+  syncItemForSide("def");
 }
 
 main().catch((err) => {

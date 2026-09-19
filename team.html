@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#1a2b33" />
+  <title>パーティ編集 | ダメ計</title>
+  <link rel="icon" type="image/png" href="./icons/icon.png" />
+  <link rel="stylesheet" href="./css/style.css?v=20260919e" />
+  <link rel="stylesheet" href="./css/tools.css?v=20260919e" />
+</head>
+<body class="tools-page">
+  <div class="app tools-app">
+    <header class="app-header">
+      <img class="app-icon" src="./icons/icon.png" alt="" width="36" height="36" />
+      <div class="titles">
+        <h1>パーティ編集</h1>
+        <p>育成済み6匹を保存 → 対面マトリクス／対戦ボットで使う</p>
+      </div>
+      <nav class="tool-nav">
+        <a href="./index.html">ダメ計</a>
+        <a href="./team.html" aria-current="page">パーティ</a>
+        <a href="./matchup.html">対面</a>
+        <a href="./battle.html">対戦</a>
+      </nav>
+    </header>
+
+    <div class="tools-toolbar">
+      <select id="team-select"></select>
+      <input type="text" id="team-name" placeholder="パーティ名" maxlength="40" />
+      <button type="button" class="icon-btn" id="btn-new">新規</button>
+      <button type="button" class="icon-btn" id="btn-save">保存</button>
+      <button type="button" class="icon-btn" id="btn-delete">削除</button>
+      <button type="button" class="icon-btn primary" id="btn-to-matchup">対面へ</button>
+    </div>
+
+    <div class="member-grid" id="member-grid"></div>
+  </div>
+
+  <div class="modal" id="modal" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true">
+      <div class="modal-head">
+        <h3 id="modal-title">選択</h3>
+        <button type="button" class="icon-btn" id="modal-close">閉じる</button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+    </div>
+  </div>
+
+  <script type="module" src="./js/team-app.js?v=20260919e"></script>
+</body>
+</html>
