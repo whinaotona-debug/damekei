@@ -31,7 +31,7 @@ import {
   wireModalClose,
   wireUiModeToggle,
 } from "./common.js?v=20260920i";
-import { typeIconHtml } from "./media.js?v=20260920i";
+import { typeIconHtml } from "./media.js?v=20260920m";
 import { openMovePickerList } from "./move-picker.js?v=20260920i";
 
 const state = {
