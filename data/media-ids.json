@@ -14,8 +14,8 @@
     "アーボック": "arbok",
     "ピカチュウ": "pikachu",
     "アローラライチュウ": "raichualola",
-    "メガライチュウX": "raichumegax",
-    "メガライチュウY": "raichumegay",
+    "メガライチュウX": "raichu-mega-x",
+    "メガライチュウY": "raichu-mega-y",
     "ライチュウ": "raichu",
     "ピクシー": "clefable",
     "メガピクシー": "clefablemega",
@@ -347,9 +347,9 @@
     "ブリジュラス": "archaludon",
     "カミツオロチ": "hydrapple",
     "イッカネズミ": "mausholdfour",
-    "メガアブソルZ": "absolmegaz",
-    "メガガブリアスZ": "garchompmegaz",
-    "メガルカリオZ": "lucariomegaz"
+    "メガアブソルZ": "absol-mega-z",
+    "メガガブリアスZ": "garchomp-mega-z",
+    "メガルカリオZ": "lucario-mega-z"
   },
   "items": {
     "ひかりのこな": "brightpowder",
