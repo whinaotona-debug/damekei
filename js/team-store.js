@@ -1,11 +1,18 @@
 /**
  * 構築ストレージ（最大3パーティ）
  */
-import { emptyEvs, NATURES } from "./stats.js?v=20260920a";
+import { emptyEvs, NATURES } from "./stats.js?v=20260920k";
 
 export const MAX_TEAMS = 3;
 export const TEAMS_KEY = "damekei-builds-v2";
 export const LEGACY_TEAMS_KEY = "damekei-teams-v1";
+/** 過去バージョンで使っていた可能性のあるキー */
+export const LEGACY_TEAM_KEYS = [
+  "damekei-teams-v1",
+  "damekei-builds-v1",
+  "damekei-teams",
+  "damekei-builds",
+];
 export const ACTIVE_SLOT_KEY = "damekei-active-slot";
 export const UI_MODE_KEY = "damekei-ui-mode";
 
@@ -55,10 +62,18 @@ function normalizeTeam(raw, fallbackName) {
   };
 }
 
-function migrateFromLegacy() {
+function teamFillCount(list) {
+  if (!Array.isArray(list)) return 0;
+  return list.reduce(
+    (n, t) => n + (t?.members || []).filter((m) => m?.species).length,
+    0
+  );
+}
+
+function parseTeamList(raw) {
+  if (!raw) return null;
   try {
-    const raw = localStorage.getItem(LEGACY_TEAMS_KEY);
-    const list = raw ? JSON.parse(raw) : [];
+    const list = JSON.parse(raw);
     if (!Array.isArray(list) || !list.length) return null;
     return list.slice(0, MAX_TEAMS).map((t, i) => normalizeTeam(t, `構築${i + 1}`));
   } catch {
@@ -66,32 +81,113 @@ function migrateFromLegacy() {
   }
 }
 
-/** 常にちょうど3枠を返す */
+/** localStorage 内の旧キー／バックアップから、中身がある構築を探す */
+export function findLegacyTeams() {
+  const candidates = [];
+  const seen = new Set();
+
+  const consider = (key, list) => {
+    if (!list || !teamFillCount(list)) return;
+    const sig = JSON.stringify(list.map((t) => t.members?.map((m) => m.species)));
+    if (seen.has(sig)) return;
+    seen.add(sig);
+    candidates.push({ key, list, fill: teamFillCount(list) });
+  };
+
+  for (const key of LEGACY_TEAM_KEYS) {
+    consider(key, parseTeamList(localStorage.getItem(key)));
+  }
+
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key || !key.includes("damekei")) continue;
+      if (key === TEAMS_KEY) continue;
+      if (LEGACY_TEAM_KEYS.includes(key)) continue;
+      consider(key, parseTeamList(localStorage.getItem(key)));
+    }
+  } catch {
+    /* ignore */
+  }
+
+  candidates.sort((a, b) => b.fill - a.fill);
+  return candidates;
+}
+
+function migrateFromLegacy() {
+  const found = findLegacyTeams();
+  return found[0]?.list || null;
+}
+
+function padTeams(list) {
+  const out = [];
+  for (let i = 0; i < MAX_TEAMS; i++) {
+    out.push(normalizeTeam(list?.[i], `構築${i + 1}`));
+  }
+  return out;
+}
+
+/** 常にちょうど3枠を返す。空の新キーしかないとき旧データを自動復元 */
 export function loadTeams() {
   try {
-    const raw = localStorage.getItem(TEAMS_KEY);
-    let list = raw ? JSON.parse(raw) : null;
-    if (!Array.isArray(list) || !list.length) {
-      list = migrateFromLegacy();
+    let current = parseTeamList(localStorage.getItem(TEAMS_KEY));
+    const currentFill = teamFillCount(current);
+
+    if (!currentFill) {
+      const legacy = migrateFromLegacy();
+      if (legacy && teamFillCount(legacy)) {
+        const saved = padTeams(legacy);
+        localStorage.setItem(TEAMS_KEY, JSON.stringify(saved));
+        return saved;
+      }
     }
-    if (!Array.isArray(list) || !list.length) {
-      list = [emptyTeam("構築1"), emptyTeam("構築2"), emptyTeam("構築3")];
+
+    if (!current || !current.length) {
+      current = [emptyTeam("構築1"), emptyTeam("構築2"), emptyTeam("構築3")];
     }
-    const out = [];
-    for (let i = 0; i < MAX_TEAMS; i++) {
-      out.push(normalizeTeam(list[i], `構築${i + 1}`));
-    }
-    return out;
+    return padTeams(current);
   } catch {
     return [emptyTeam("構築1"), emptyTeam("構築2"), emptyTeam("構築3")];
   }
 }
 
-export function saveTeams(list) {
-  const out = [];
-  for (let i = 0; i < MAX_TEAMS; i++) {
-    out.push(normalizeTeam(list[i], `構築${i + 1}`));
+/**
+ * 旧データを強制的に上書き復元する。
+ * @returns {{ ok: boolean, fill: number, key?: string, message: string }}
+ */
+export function restoreLegacyTeams({ force = false } = {}) {
+  const current = parseTeamList(localStorage.getItem(TEAMS_KEY));
+  const currentFill = teamFillCount(current);
+  const found = findLegacyTeams();
+  if (!found.length) {
+    return {
+      ok: false,
+      fill: 0,
+      message:
+        "この端末・このサイト内に旧データが見つかりません。別のURL（file:// や別ドメイン）で保存していた場合は、そちらの保存領域は別物です。",
+    };
   }
+  const best = found[0];
+  if (!force && currentFill > best.fill) {
+    return {
+      ok: false,
+      fill: currentFill,
+      key: best.key,
+      message: `今の構築の方が充実しています（今${currentFill}匹 / 旧${best.fill}匹）。上書きする場合は強制復元してください。`,
+    };
+  }
+  const saved = padTeams(best.list);
+  localStorage.setItem(TEAMS_KEY, JSON.stringify(saved));
+  return {
+    ok: true,
+    fill: best.fill,
+    key: best.key,
+    message: `旧データ（${best.key}）から ${best.fill} 匹分を復元しました。`,
+  };
+}
+
+export function saveTeams(list) {
+  const out = padTeams(list);
   localStorage.setItem(TEAMS_KEY, JSON.stringify(out));
   return out;
 }

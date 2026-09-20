@@ -11,8 +11,8 @@ import {
   totalEv,
   clampEvAssign,
   getNature,
-} from "./stats.js?v=20260920j";
-import { TYPES } from "./types.js?v=20260920j";
+} from "./stats.js?v=20260920k";
+import { TYPES } from "./types.js?v=20260920k";
 import {
   loadTeams,
   replaceTeamAt,
@@ -22,7 +22,9 @@ import {
   applyUiMode,
   isMegaName,
   emptyMember,
-} from "./team-store.js?v=20260920j";
+  restoreLegacyTeams,
+  findLegacyTeams,
+} from "./team-store.js?v=20260920k";
 import {
   $,
   textMatchesQuery,
@@ -31,11 +33,11 @@ import {
   loadGameData,
   wireModalClose,
   wireUiModeToggle,
-} from "./common.js?v=20260920j";
-import { buildOverviewHtml, downloadOverviewPng } from "./overview.js?v=20260920j";
-import { typeIconHtml, pokeImgHtml, itemImgHtml } from "./media.js?v=20260920j";
-import { openMovePickerList } from "./move-picker.js?v=20260920j";
-import { encodeTeamCode, decodeTeamCode, normalizeTeamCodeInput } from "./team-code.js?v=20260920j";
+} from "./common.js?v=20260920k";
+import { buildOverviewHtml, downloadOverviewPng } from "./overview.js?v=20260920k";
+import { typeIconHtml, pokeImgHtml, itemImgHtml } from "./media.js?v=20260920k";
+import { openMovePickerList } from "./move-picker.js?v=20260920k";
+import { encodeTeamCode, decodeTeamCode, normalizeTeamCodeInput } from "./team-code.js?v=20260920k";
 
 const state = {
   pokemon: [],
@@ -577,6 +579,33 @@ function wire() {
   });
   $("btn-import-code").addEventListener("click", () => {
     showImportCode();
+  });
+
+  $("btn-restore-legacy").addEventListener("click", () => {
+    const found = findLegacyTeams();
+    if (!found.length) {
+      alert(
+        "この端末のこのサイト内に旧データが見つかりません。\n\n・以前 file:// で開いていた／別のURLだった場合は保存場所が別です\n・ブラウザのサイトデータ削除でも消えます"
+      );
+      return;
+    }
+    const best = found[0];
+    const names = best.list
+      .flatMap((t) => (t.members || []).map((m) => m.species).filter(Boolean))
+      .slice(0, 12)
+      .join(" / ");
+    if (
+      !confirm(
+        `旧データ（${best.key}）から ${best.fill} 匹分を、今の構築に上書き復元しますか？\n\n例: ${names || "（なし）"}`
+      )
+    ) {
+      return;
+    }
+    const res = restoreLegacyTeams({ force: true });
+    state.teams = loadTeams();
+    showList();
+    toast(res.ok ? "復元しました" : "復元できませんでした");
+    if (!res.ok) alert(res.message);
   });
 
   $("roster-list").addEventListener("click", (e) => {
