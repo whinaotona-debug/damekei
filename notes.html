@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ja" data-ui="phone">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>構築別メモ | ダメ計</title>
+  <link rel="icon" type="image/png" href="./icons/icon.png" />
+  <link rel="stylesheet" href="./css/style.css?v=20260920g" />
+  <link rel="stylesheet" href="./css/hub.css?v=20260920g" />
+  <link rel="stylesheet" href="./css/type-icons.css?v=20260920g" />
+</head>
+<body class="tools-page">
+  <div class="hub-app">
+    <header class="app-header">
+      <img class="app-icon" src="./icons/icon.png" alt="" width="36" height="36" />
+      <div class="titles">
+        <h1>構築別メモ</h1>
+        <p>構築ごとに大きめのメモ欄</p>
+      </div>
+      <nav class="hub-nav">
+        <a href="./index.html">ホーム</a>
+        <a href="./notes.html" aria-current="page">メモ</a>
+        <div class="ui-toggle">
+          <button type="button" data-ui-set="phone">スマホ</button>
+          <button type="button" data-ui-set="ipad">iPad</button>
+        </div>
+      </nav>
+    </header>
+    <div class="slot-tabs" id="slot-tabs"></div>
+    <div class="memo-block">
+      <label for="team-memo" id="memo-label">メモ</label>
+      <textarea id="team-memo" placeholder="選出・対面・注意点など"></textarea>
+    </div>
+    <button type="button" class="icon-btn primary" id="btn-save" style="width:100%;min-height:48px">保存</button>
+    <p class="hint" id="toast-line"></p>
+  </div>
+  <script type="module" src="./js/notes-app.js?v=20260920g"></script>
+</body>
+</html>

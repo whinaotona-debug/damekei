@@ -721,3 +721,126 @@ html[data-ui="ipad"] .calc-layout {
   background: #fdecea;
   color: var(--bad);
 }
+
+/* —— ホーム一覧 —— */
+.home-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.home-tile {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  min-height: 88px;
+  padding: 14px 16px;
+  text-decoration: none;
+  color: inherit;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  font: inherit;
+}
+.home-tile:hover,
+.home-tile:focus-visible {
+  background: #eef7fb;
+  outline: none;
+}
+.home-tile-k {
+  font-size: var(--ui-small);
+  color: var(--muted);
+  font-weight: 700;
+}
+.home-tile-t {
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+html[data-ui="ipad"] .home-tile {
+  min-height: 110px;
+}
+html[data-ui="ipad"] .home-tile-t {
+  font-size: 1.35rem;
+}
+
+.chart-block {
+  margin-top: 14px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: var(--shadow);
+}
+.chart-block h3 {
+  margin: 0 0 4px;
+  font-size: 1rem;
+}
+.chart-scroll {
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-top: 8px;
+}
+.type-chart {
+  border-collapse: collapse;
+  font-size: 0.65rem;
+  min-width: 520px;
+}
+.type-chart th,
+.type-chart td {
+  border: 1px solid var(--line);
+  width: 26px;
+  height: 26px;
+  text-align: center;
+  padding: 1px;
+  vertical-align: middle;
+}
+.type-chart .row-h {
+  text-align: left;
+  padding: 2px 4px;
+  white-space: nowrap;
+}
+.type-chart .x2 { background: #ffe0e0; color: #b71c1c; font-weight: 800; }
+.type-chart .xhalf { background: #e3f2fd; color: #1565c0; font-weight: 700; }
+.type-chart .x0 { background: #eceff1; color: #546e7a; font-weight: 700; }
+.type-chart .x1 { background: #fff; }
+.home-nature {
+  min-width: 360px;
+  font-size: 0.78rem;
+}
+.home-nature th,
+.home-nature td {
+  border: 1px solid var(--line);
+  padding: 6px 4px;
+  text-align: center;
+}
+.ov-item-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ov-sprite-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding-top: 4px;
+}
+
+/* 逆算結果カード */
+.rev-card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 8px;
+}
+.rev-ev { font-size: 1.05rem; font-weight: 800; }
+.rev-nat { margin-top: 4px; color: var(--accent); font-weight: 700; }
+.rev-roll { margin-top: 4px; font-size: var(--ui-small); color: var(--muted); }
+.rev-mine-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ja" data-ui="phone">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>素早さ比較 | ダメ計</title>
+  <link rel="icon" type="image/png" href="./icons/icon.png" />
+  <link rel="stylesheet" href="./css/style.css?v=20260920g" />
+  <link rel="stylesheet" href="./css/hub.css?v=20260920g" />
+  <link rel="stylesheet" href="./css/type-icons.css?v=20260920g" />
+</head>
+<body class="tools-page">
+  <div class="hub-app">
+    <header class="app-header">
+      <img class="app-icon" src="./icons/icon.png" alt="" width="36" height="36" />
+      <div class="titles">
+        <h1>素早さ比較</h1>
+        <p>性格・スカーフ・追い風・トリル込み</p>
+      </div>
+      <nav class="hub-nav">
+        <a href="./index.html">ホーム</a>
+        <a href="./speed.html" aria-current="page">素早さ</a>
+        <div class="ui-toggle">
+          <button type="button" data-ui-set="phone">スマホ</button>
+          <button type="button" data-ui-set="ipad">iPad</button>
+        </div>
+      </nav>
+    </header>
+
+    <div class="calc-layout">
+      <section class="calc-attacker" id="side-a">
+        <h2>ポケモンA</h2>
+        <button type="button" class="selector-btn" id="pick-a" style="width:100%"><div class="title">選ぶ</div></button>
+        <div class="field-compact" style="margin-top:8px">
+          <label>性格<input id="nat-a" value="ようき" /></label>
+          <label>努力S<input type="number" id="ev-a" min="0" max="32" value="32" /></label>
+          <label>持ち物
+            <select id="item-a">
+              <option value="なし">なし</option>
+              <option value="こだわりスカーフ">こだわりスカーフ</option>
+              <option value="くろいてっきゅう">くろいてっきゅう</option>
+              <option value="きょうせいギプス">きょうせいギプス</option>
+            </select>
+          </label>
+          <label>ランクS<input type="number" id="rank-a" min="-6" max="6" value="0" /></label>
+        </div>
+        <div class="check-list compact">
+          <label><input type="checkbox" id="tail-a" />追い風</label>
+          <label><input type="checkbox" id="para-a" />まひ</label>
+        </div>
+      </section>
+
+      <section class="calc-attacker" id="side-b">
+        <h2>ポケモンB</h2>
+        <button type="button" class="selector-btn" id="pick-b" style="width:100%"><div class="title">選ぶ</div></button>
+        <div class="field-compact" style="margin-top:8px">
+          <label>性格<input id="nat-b" value="おくびょう" /></label>
+          <label>努力S<input type="number" id="ev-b" min="0" max="32" value="32" /></label>
+          <label>持ち物
+            <select id="item-b">
+              <option value="なし">なし</option>
+              <option value="こだわりスカーフ">こだわりスカーフ</option>
+              <option value="くろいてっきゅう">くろいてっきゅう</option>
+              <option value="きょうせいギプス">きょうせいギプス</option>
+            </select>
+          </label>
+          <label>ランクS<input type="number" id="rank-b" min="-6" max="6" value="0" /></label>
+        </div>
+        <div class="check-list compact">
+          <label><input type="checkbox" id="tail-b" />追い風</label>
+          <label><input type="checkbox" id="para-b" />まひ</label>
+        </div>
+      </section>
+    </div>
+
+    <section class="calc-results" style="margin-top:10px">
+      <div class="check-list compact">
+        <label><input type="checkbox" id="trick-room" />トリックルーム</label>
+      </div>
+      <button type="button" class="icon-btn primary" id="btn-run" style="width:100%;min-height:48px;margin-top:8px">比較する</button>
+      <div id="speed-out" style="margin-top:10px"><p class="hint">2匹選んで比較</p></div>
+    </section>
+  </div>
+
+  <div class="modal" id="modal" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true">
+      <div class="modal-head"><h3 id="modal-title">選択</h3><button type="button" class="icon-btn" id="modal-close">閉じる</button></div>
+      <div class="modal-body" id="modal-body"></div>
+    </div>
+  </div>
+  <script type="module" src="./js/speed-app.js?v=20260920g"></script>
+</body>
+</html>

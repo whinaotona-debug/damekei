@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ja" data-ui="phone">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#1a2b33" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>??? | ????</title>
+  <link rel="icon" type="image/png" href="./icons/icon.png" />
+  <link rel="stylesheet" href="./css/style.css?v=20260920g" />
+  <link rel="stylesheet" href="./css/hub.css?v=20260920g" />
+  <link rel="stylesheet" href="./css/type-icons.css?v=20260920g" />
+</head>
+<body class="tools-page">
+  <div class="hub-app">
+    <header class="app-header">
+      <img class="app-icon" src="./icons/icon.png" alt="" width="36" height="36" />
+      <div class="titles">
+        <h1>???</h1>
+        <p>??1? ? ??6????</p>
+      </div>
+      <nav class="hub-nav">
+        <a href="./index.html">???</a>
+        <a href="./calc.html" aria-current="page">???</a>
+        <div class="ui-toggle">
+          <button type="button" data-ui-set="phone">???</button>
+          <button type="button" data-ui-set="ipad">iPad</button>
+        </div>
+        <div class="result-mini" id="result-mini">?</div>
+      </nav>
+    </header>
+
+    <div class="team-toolbar">
+      <label class="field-label" for="team-slot">??????</label>
+      <select id="team-slot" aria-label="????"></select>
+      <button type="button" class="icon-btn" id="btn-edit-team">?????</button>
+    </div>
+
+    <div class="calc-layout">
+      <section class="calc-attacker">
+        <h2>???</h2>
+        <div class="poke-slot" id="atk-slot" tabindex="0" role="button">??????????</div>
+        <div id="atk-detail" class="poke-detail" hidden></div>
+
+        <div class="mid-row" style="margin-top:8px;display:grid;gap:6px;grid-template-columns:1fr 1fr">
+          <button type="button" class="selector-btn" id="move-btn">
+            <div class="k">???</div>
+            <div class="title">????</div>
+          </button>
+          <button type="button" class="selector-btn" id="atk-item-btn">
+            <div class="k">?????</div>
+            <div class="title">??</div>
+          </button>
+        </div>
+
+        <div class="field-compact">
+          <label>??<select id="weather">
+            <option value="??">??</option>
+            <option value="??">??</option>
+            <option value="??">?</option>
+            <option value="?????">?</option>
+            <option value="??">?</option>
+          </select></label>
+          <label>?<select id="field">
+            <option value="??">??</option>
+            <option value="????????">???</option>
+            <option value="????????">???</option>
+            <option value="????????">???</option>
+            <option value="????????">???</option>
+          </select></label>
+          <label>??<select id="atk-status">
+            <option value="??">??</option>
+            <option value="???">???</option>
+            <option value="??">??</option>
+            <option value="??">??</option>
+            <option value="????">????</option>
+          </select></label>
+          <label>????<select id="spikes">
+            <option value="0">0</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+          </select></label>
+        </div>
+
+        <div class="check-list compact">
+          <label><input type="checkbox" id="critical" />??</label>
+          <label><input type="checkbox" id="reflect" />????</label>
+          <label><input type="checkbox" id="lightScreen" />???</label>
+          <label><input type="checkbox" id="auroraVeil" />???</label>
+          <label><input type="checkbox" id="stealthRock" />???</label>
+          <label><input type="checkbox" id="leechSeed" />????</label>
+          <label><input type="checkbox" id="burnChip" />???D</label>
+          <label><input type="checkbox" id="poisonChip" />??D</label>
+          <label><input type="checkbox" id="gravity" />??</label>
+          <label><input type="checkbox" id="helpBoost" />????</label>
+          <label><input type="checkbox" id="hpNotFull" />??HP????</label>
+          <label><input type="checkbox" id="movingLast" />??(????)</label>
+        </div>
+      </section>
+
+      <section class="calc-results">
+        <h2 id="results-title">? ??6??????</h2>
+        <div class="bulk-results" id="bulk-results">
+          <p class="hint">????????????????6???????????</p>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div class="modal" id="modal" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true">
+      <div class="modal-head">
+        <h3 id="modal-title">??</h3>
+        <button type="button" class="icon-btn" id="modal-close">???</button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+    </div>
+  </div>
+
+  <script type="module" src="./js/calc-app.js?v=20260920g"></script>
+</body>
+</html>

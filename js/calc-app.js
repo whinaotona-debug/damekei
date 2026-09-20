@@ -12,16 +12,16 @@ import {
   totalEv,
   clampEvAssign,
   getNature,
-} from "./stats.js?v=20260920c";
-import { TYPES } from "./types.js?v=20260920c";
-import { calculateDamage } from "./damage.js?v=20260920c";
+} from "./stats.js?v=20260920g";
+import { TYPES } from "./types.js?v=20260920g";
+import { calculateDamage } from "./damage.js?v=20260920g";
 import {
   loadTeams,
   getActiveSlot,
   setActiveSlot,
   applyUiMode,
   isMegaName,
-} from "./team-store.js?v=20260920c";
+} from "./team-store.js?v=20260920g";
 import {
   $,
   textMatchesQuery,
@@ -30,7 +30,9 @@ import {
   loadGameData,
   wireModalClose,
   wireUiModeToggle,
-} from "./common.js?v=20260920c";
+} from "./common.js?v=20260920g";
+import { typeIconHtml } from "./media.js?v=20260920g";
+import { openMovePickerList } from "./move-picker.js?v=20260920g";
 
 const state = {
   pokemon: [],
@@ -176,7 +178,7 @@ function updateMoveBtn() {
     return;
   }
   const mv = state.move;
-  btn.innerHTML = `<div class="k">使う技</div><div class="title">${mv.name}</div><div class="sub">${mv.type} ${mv.category}　威力 ${mv.power ?? "—"}</div>`;
+  btn.innerHTML = `<div class="k">使う技</div><div class="title">${typeIconHtml(mv.type, { size: "sm" })} ${mv.name}</div><div class="sub">${mv.category}　威力 ${mv.power ?? "—"}</div>`;
 }
 
 function updateItemBtn() {
@@ -314,42 +316,18 @@ function openPokePicker() {
 
 function openMovePicker() {
   if (!state.atk) return;
-  const allowed = learnable(state.atk.name);
-  openModal(
-    "技",
-    `<div class="list-filters">
-      <input type="search" id="q" placeholder="検索" />
-      <select id="move-type"><option value="">タイプ</option>${TYPES.map((t) => `<option value="${t}">${t}</option>`).join("")}</select>
-    </div><div id="list"></div>`
-  );
-  const render = () => {
-    const q = $("q").value;
-    const typ = $("move-type").value;
-    let list = state.moves;
-    if (allowed.length) list = list.filter((mv) => allowed.includes(mv.name));
-    $("list").innerHTML = list
-      .filter((mv) => textMatchesQuery(mv.name, q))
-      .filter((mv) => !typ || mv.type === typ)
-      .slice(0, 100)
-      .map(
-        (mv) => `<button type="button" class="list-item" data-name="${mv.name}">
-        <div>${mv.name}</div>
-        <div class="s">${mv.type} ${mv.category}　威力 ${mv.power ?? "—"}</div>
-      </button>`
-      )
-      .join("");
-    $("list").querySelectorAll("[data-name]").forEach((el) => {
-      el.addEventListener("click", () => {
-        state.move = moveByName(el.dataset.name);
-        closeModal();
-        updateMoveBtn();
-        recalc();
-      });
-    });
-  };
-  $("q").addEventListener("input", render);
-  $("move-type").addEventListener("change", render);
-  render();
+  openMovePickerList({
+    title: "技",
+    moves: state.moves,
+    learnsets: state.learnsets,
+    species: state.atk.name,
+    allowStatus: false,
+    onPick: (mv) => {
+      state.move = mv;
+      updateMoveBtn();
+      recalc();
+    },
+  });
 }
 
 function openItemPicker() {

@@ -1,8 +1,8 @@
 /**
- * 構築概要カード描画 & PNG保存
+ * 構築概要カード描画 & PNG保存（可能ならアルバム共有）
  */
-import { calcAllStats, emptyEvs, STAT_LABELS, STAT_KEYS } from "./stats.js?v=20260920e";
-import { typeIconHtml, pokeImgHtml, itemImgHtml } from "./media.js?v=20260920e";
+import { calcAllStats, emptyEvs, STAT_LABELS, STAT_KEYS } from "./stats.js?v=20260920g";
+import { typeIconHtml, pokeImgHtml, itemImgHtml } from "./media.js?v=20260920g";
 
 function esc(s) {
   return String(s || "")
@@ -84,25 +84,51 @@ export async function downloadOverviewPng(sheetEl, filename) {
           })
     )
   );
-  // フォールバック連鎖の猶予
   await new Promise((r) => setTimeout(r, 400));
 
-  if (typeof window.html2canvas === "function") {
-    const canvas = await window.html2canvas(sheetEl, {
-      backgroundColor: "#152238",
-      scale: 2,
-      useCORS: true,
-      allowTaint: true,
-    });
-    triggerDownload(canvas.toDataURL("image/png"), filename);
-    return;
+  if (typeof window.html2canvas !== "function") {
+    alert("画像ライブラリの読み込みに失敗しました。再読み込みしてから試してください。");
+    return "error";
   }
-  alert("画像ライブラリの読み込みに失敗しました。再読み込みしてから試してください。");
+
+  const canvas = await window.html2canvas(sheetEl, {
+    backgroundColor: "#152238",
+    scale: 2,
+    useCORS: true,
+    allowTaint: true,
+  });
+
+  const name = filename || "team-overview.png";
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+  if (!blob) {
+    triggerDownload(canvas.toDataURL("image/png"), name);
+    return "download";
+  }
+
+  const file = new File([blob], name, { type: "image/png" });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({
+        files: [file],
+        title: name,
+        text: "構築概要",
+      });
+      return "shared";
+    } catch (err) {
+      if (err && err.name === "AbortError") return "cancelled";
+    }
+  }
+
+  triggerDownload(URL.createObjectURL(blob), name);
+  return "download";
 }
 
-function triggerDownload(dataUrl, filename) {
+function triggerDownload(href, filename) {
   const a = document.createElement("a");
-  a.href = dataUrl;
+  a.href = href;
   a.download = filename || "team-overview.png";
   a.click();
+  if (href.startsWith("blob:")) {
+    setTimeout(() => URL.revokeObjectURL(href), 2000);
+  }
 }

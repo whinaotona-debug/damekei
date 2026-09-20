@@ -11,8 +11,8 @@ import {
   totalEv,
   clampEvAssign,
   getNature,
-} from "./stats.js?v=20260920e";
-import { TYPES } from "./types.js?v=20260920e";
+} from "./stats.js?v=20260920g";
+import { TYPES } from "./types.js?v=20260920g";
 import {
   loadTeams,
   replaceTeamAt,
@@ -22,7 +22,7 @@ import {
   applyUiMode,
   isMegaName,
   emptyMember,
-} from "./team-store.js?v=20260920e";
+} from "./team-store.js?v=20260920g";
 import {
   $,
   textMatchesQuery,
@@ -31,9 +31,10 @@ import {
   loadGameData,
   wireModalClose,
   wireUiModeToggle,
-} from "./common.js?v=20260920e";
-import { buildOverviewHtml, downloadOverviewPng } from "./overview.js?v=20260920e";
-import { typeIconHtml, typePillHtml, pokeImgHtml, itemImgHtml } from "./media.js?v=20260920e";
+} from "./common.js?v=20260920g";
+import { buildOverviewHtml, downloadOverviewPng } from "./overview.js?v=20260920g";
+import { typeIconHtml, pokeImgHtml, itemImgHtml } from "./media.js?v=20260920g";
+import { openMovePickerList } from "./move-picker.js?v=20260920g";
 
 const state = {
   pokemon: [],
@@ -97,7 +98,7 @@ function moveSlotHtml(moveName, slotLabel) {
   if (!mv) {
     return `<div class="k">${slotLabel}</div><div class="title move-empty">＋ 技</div>`;
   }
-  return `<div class="k">${slotLabel}</div><div class="title">${typeIconHtml(mv.type, { size: "sm" })} ${mv.name}</div><div class="sub">${typePillHtml(mv.type)} ${mv.category}　威力 ${mv.power ?? "—"}</div>`;
+  return `<div class="k">${slotLabel}</div><div class="title">${typeIconHtml(mv.type, { size: "sm" })} ${mv.name}</div><div class="sub">${mv.category}　威力 ${mv.power ?? "—"}</div>`;
 }
 
 function showList() {
@@ -385,45 +386,18 @@ function openItemPicker(i) {
 
 function openMovePicker(i, mi) {
   const m = team().members[i];
-  const allowed = learnable(m.species);
-  openModal(
-    `技${mi + 1}`,
-    `<div class="list-filters">
-      <input type="search" id="q" placeholder="検索" />
-      <select id="move-type"><option value="">タイプ</option>${TYPES.map((t) => `<option value="${t}">${t}</option>`).join("")}</select>
-    </div>
-    <div id="list"></div>`
-  );
-  const render = () => {
-    const q = $("q").value;
-    const typ = $("move-type").value;
-    let list = state.moves;
-    if (allowed.length) list = list.filter((mv) => allowed.includes(mv.name));
-    $("list").innerHTML = [
-      `<button type="button" class="list-item" data-name=""><div>（なし）</div></button>`,
-      ...list
-        .filter((mv) => textMatchesQuery(mv.name, q))
-        .filter((mv) => !typ || mv.type === typ)
-        .slice(0, 100)
-        .map(
-          (mv) => `<button type="button" class="list-item" data-name="${mv.name}">
-          <div style="display:flex;align-items:center;gap:8px">${typeIconHtml(mv.type, { size: "md" })}<div><div>${mv.name}</div>
-          <div class="s">${mv.type} ${mv.category}　威力 ${mv.power ?? "—"}</div></div></div>
-        </button>`
-        ),
-    ].join("");
-    $("list").querySelectorAll("[data-name]").forEach((el) => {
-      el.addEventListener("click", () => {
-        m.moves[mi] = el.dataset.name || "";
-        persist();
-        closeModal();
-        renderTrain();
-      });
-    });
-  };
-  $("q").addEventListener("input", render);
-  $("move-type").addEventListener("change", render);
-  render();
+  openMovePickerList({
+    title: `技${mi + 1}`,
+    moves: state.moves,
+    learnsets: state.learnsets,
+    species: m.species,
+    allowStatus: true,
+    onPick: (mv) => {
+      m.moves[mi] = mv?.name || "";
+      persist();
+      renderTrain();
+    },
+  });
 }
 
 function openNaturePicker(i) {
@@ -473,8 +447,10 @@ function showOverview() {
     const sheet = $("overview-sheet");
     if (!sheet) return;
     const safe = (t.name || "構築").replace(/[\\/:*?"<>|]/g, "_");
-    await downloadOverviewPng(sheet, `${safe}-概要.png`);
-    toast("画像を保存しました");
+    const how = await downloadOverviewPng(sheet, `${safe}-概要.png`);
+    if (how === "shared") toast("共有シートから「写真に保存」を選んでください");
+    else if (how === "download") toast("画像をダウンロードしました");
+    else if (how === "cancelled") toast("キャンセルしました");
   });
 }
 

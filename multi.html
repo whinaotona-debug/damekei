@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ja" data-ui="phone">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>合算計算 | ダメ計</title>
+  <link rel="icon" type="image/png" href="./icons/icon.png" />
+  <link rel="stylesheet" href="./css/style.css?v=20260920g" />
+  <link rel="stylesheet" href="./css/hub.css?v=20260920g" />
+  <link rel="stylesheet" href="./css/type-icons.css?v=20260920g" />
+</head>
+<body class="tools-page">
+  <div class="hub-app">
+    <header class="app-header">
+      <img class="app-icon" src="./icons/icon.png" alt="" width="36" height="36" />
+      <div class="titles">
+        <h1>合算計算</h1>
+        <p>相手の技A＋技Bのダメージを足す</p>
+      </div>
+      <nav class="hub-nav">
+        <a href="./index.html">ホーム</a>
+        <a href="./multi.html" aria-current="page">合算</a>
+        <div class="ui-toggle">
+          <button type="button" data-ui-set="phone">スマホ</button>
+          <button type="button" data-ui-set="ipad">iPad</button>
+        </div>
+      </nav>
+    </header>
+
+    <div class="team-toolbar">
+      <label class="field-label" for="team-slot">受け側の構築</label>
+      <select id="team-slot"></select>
+    </div>
+
+    <section class="calc-attacker">
+      <h2>攻撃側（相手）</h2>
+      <button type="button" class="selector-btn" id="btn-atk" style="width:100%"><div class="k">相手ポケモン</div><div class="title">選ぶ</div></button>
+      <div class="field-row" style="margin-top:8px">
+        <div>
+          <div class="field-label">性格</div>
+          <input type="text" id="atk-nature" value="いじっぱり" style="width:100%;min-height:40px;padding:6px 8px;border:1px solid var(--line);border-radius:8px" />
+        </div>
+        <div>
+          <div class="field-label">持ち物</div>
+          <button type="button" class="nature-btn" id="btn-atk-item">なし</button>
+        </div>
+      </div>
+      <p class="hint" style="margin-top:6px">努力値は攻撃側ステに32振った想定（物理ならA、特殊ならC）。細かくはダメ計で。</p>
+      <div class="mid-row" style="margin-top:8px;display:grid;gap:6px;grid-template-columns:1fr 1fr">
+        <button type="button" class="selector-btn" id="btn-move1"><div class="k">技1</div><div class="title">選ぶ</div></button>
+        <button type="button" class="selector-btn" id="btn-move2"><div class="k">技2</div><div class="title">選ぶ</div></button>
+      </div>
+      <div class="field-compact">
+        <label>天候<select id="weather"><option>なし</option><option value="はれ">晴れ</option><option value="あめ">雨</option><option value="すなあらし">砂</option><option value="ゆき">雪</option></select></label>
+        <label>場<select id="field"><option>なし</option><option value="エレキフィールド">エレキ</option><option value="グラスフィールド">グラス</option><option value="サイコフィールド">サイコ</option><option value="ミストフィールド">ミスト</option></select></label>
+      </div>
+      <div class="check-list compact">
+        <label><input type="checkbox" id="critical" />急所</label>
+        <label><input type="checkbox" id="reflect" />リフレク</label>
+        <label><input type="checkbox" id="lightScreen" />光の壁</label>
+        <label><input type="checkbox" id="auroraVeil" />ベール</label>
+      </div>
+      <button type="button" class="icon-btn primary" id="btn-run" style="width:100%;margin-top:10px;min-height:48px">合算する</button>
+    </section>
+
+    <section class="calc-results" style="margin-top:10px">
+      <h2>対 構築（技1＋技2）</h2>
+      <div id="results"><p class="hint">技を2つ選ぶと、受け側6匹それぞれの合算が出ます</p></div>
+    </section>
+  </div>
+
+  <div class="modal" id="modal" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true">
+      <div class="modal-head"><h3 id="modal-title">選択</h3><button type="button" class="icon-btn" id="modal-close">閉じる</button></div>
+      <div class="modal-body" id="modal-body"></div>
+    </div>
+  </div>
+  <script type="module" src="./js/multi-app.js?v=20260920g"></script>
+</body>
+</html>

@@ -1,7 +1,7 @@
 /**
  * タイプアイコン・ポケモン/持ち物スプライト
  */
-import mediaIds from "./media-ids.js?v=20260920e";
+import mediaIds from "./media-ids.js?v=20260920g";
 
 const ITEM_SPRITE = "https://play.pokemonshowdown.com/sprites/itemicons";
 
@@ -98,16 +98,47 @@ export function itemSpriteId(jaName) {
   return ITEM_ALIAS[jaName] || mediaIds.items?.[jaName] || "";
 }
 
-/** 複数CDNを順に試す */
+/** Showdown id → pokesprite 風ハイフン名 */
+function toHyphenSpriteId(id) {
+  let s = String(id || "");
+  s = s.replace(/megax$/, "-mega-x").replace(/megay$/, "-mega-y").replace(/mega$/, "-mega");
+  s = s
+    .replace(/alola$/, "-alola")
+    .replace(/galar$/, "-galar")
+    .replace(/hisui$/, "-hisui")
+    .replace(/wash$/, "-wash")
+    .replace(/heat$/, "-heat")
+    .replace(/mow$/, "-mow")
+    .replace(/fan$/, "-fan")
+    .replace(/frost$/, "-frost");
+  return s;
+}
+
+function isMegaJa(jaName) {
+  return !!(jaName && jaName.startsWith("メガ") && jaName !== "メガニウム");
+}
+
+/** 複数CDNを順に試す（メガは図鑑番号フォールバックしない＝通常姿にならない） */
 export function pokeSpriteUrls(jaName, dex) {
   const id = pokeSpriteId(jaName);
+  const mega = isMegaJa(jaName);
   const urls = [];
   if (id) {
-    urls.push(`https://play.pokemonshowdown.com/sprites/gen5/${id}.png`);
-    urls.push(`https://play.pokemonshowdown.com/sprites/dex/${id}.png`);
-    urls.push(`https://raw.githubusercontent.com/msikma/pokesprite/master/pokemon-gen8/regular/${id}.png`);
+    const hy = toHyphenSpriteId(id);
+    // Showdown はメガ等をハイフン付きIDで配信（salamencemega は 404）
+    const showdownIds = hy !== id ? [hy, id] : [id];
+    for (const sid of showdownIds) {
+      urls.push(`https://play.pokemonshowdown.com/sprites/home-centered/${sid}.png`);
+      urls.push(`https://play.pokemonshowdown.com/sprites/dex/${sid}.png`);
+      urls.push(`https://play.pokemonshowdown.com/sprites/gen5/${sid}.png`);
+    }
+    urls.push(`https://raw.githubusercontent.com/msikma/pokesprite/master/pokemon-gen8/regular/${hy}.png`);
+    if (mega) {
+      urls.push(`https://play.pokemonshowdown.com/sprites/ani/${hy}.gif`);
+    }
   }
-  if (dex && Number(dex) > 0) {
+  // 通常のみ図鑑番号（メガに使うとベース姿になる）
+  if (!mega && dex && Number(dex) > 0) {
     const n = Number(dex);
     urls.push(`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${n}.png`);
     urls.push(`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${n}.png`);
