@@ -3,7 +3,7 @@ import { TYPES } from "./types.js?v=20260920h";
 import { calculateDamage } from "./damage.js?v=20260920h";
 import { loadTeams, getActiveSlot, setActiveSlot, applyUiMode } from "./team-store.js?v=20260920h";
 import { $, textMatchesQuery, openModal, closeModal, loadGameData, wireModalClose, wireUiModeToggle } from "./common.js?v=20260920h";
-import { typeIconHtml, pokeImgHtml } from "./media.js?v=20260920h";
+import { typeIconHtml, pokeImgHtml } from "./media.js?v=20260920m";
 import { openMovePickerList } from "./move-picker.js?v=20260920h";
 
 const state = {

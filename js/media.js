@@ -1,7 +1,7 @@
 /**
  * タイプアイコン・ポケモン/持ち物スプライト
  */
-import mediaIds from "./media-ids.js?v=20260920h";
+import mediaIds from "./media-ids.js?v=20260920m";
 
 const ITEM_SPRITE = "https://play.pokemonshowdown.com/sprites/itemicons";
 

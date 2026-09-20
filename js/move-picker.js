@@ -3,7 +3,7 @@
  */
 import { TYPES } from "./types.js?v=20260920h";
 import { $, textMatchesQuery, openModal, closeModal } from "./common.js?v=20260920h";
-import { typeIconHtml } from "./media.js?v=20260920h";
+import { typeIconHtml } from "./media.js?v=20260920m";
 
 const TYPE_ORDER = new Map(TYPES.map((t, i) => [t, i]));
 

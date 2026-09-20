@@ -3,7 +3,7 @@
  */
 import { TYPES, typeEffectiveness } from "./types.js?v=20260920h";
 import { NATURE_TABLE, NATURE_STAT_ORDER, NEUTRAL_NATURES, STAT_LABELS } from "./stats.js?v=20260920h";
-import { typeIconHtml } from "./media.js?v=20260920h";
+import { typeIconHtml } from "./media.js?v=20260920m";
 
 function multClass(m) {
   if (m === 0) return "x0";

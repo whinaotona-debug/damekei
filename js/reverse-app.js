@@ -19,7 +19,7 @@ import {
   wireModalClose,
   wireUiModeToggle,
 } from "./common.js?v=20260920h";
-import { typeIconHtml, pokeImgHtml } from "./media.js?v=20260920h";
+import { typeIconHtml, pokeImgHtml } from "./media.js?v=20260920m";
 import { openMovePickerList } from "./move-picker.js?v=20260920h";
 import {
   reverseOffense,
