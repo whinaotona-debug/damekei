@@ -11,8 +11,8 @@ import {
   totalEv,
   clampEvAssign,
   getNature,
-} from "./stats.js?v=20260920k";
-import { TYPES } from "./types.js?v=20260920k";
+} from "./stats.js?v=20260920m";
+import { TYPES } from "./types.js?v=20260920m";
 import {
   loadTeams,
   replaceTeamAt,
@@ -24,7 +24,10 @@ import {
   emptyMember,
   restoreLegacyTeams,
   findLegacyTeams,
-} from "./team-store.js?v=20260920k";
+  diagnoseStorage,
+  exportTeamsBackup,
+  importTeamsBackup,
+} from "./team-store.js?v=20260920m";
 import {
   $,
   textMatchesQuery,
@@ -33,11 +36,11 @@ import {
   loadGameData,
   wireModalClose,
   wireUiModeToggle,
-} from "./common.js?v=20260920k";
-import { buildOverviewHtml, downloadOverviewPng } from "./overview.js?v=20260920k";
-import { typeIconHtml, pokeImgHtml, itemImgHtml } from "./media.js?v=20260920k";
-import { openMovePickerList } from "./move-picker.js?v=20260920k";
-import { encodeTeamCode, decodeTeamCode, normalizeTeamCodeInput } from "./team-code.js?v=20260920k";
+} from "./common.js?v=20260920m";
+import { buildOverviewHtml, downloadOverviewPng } from "./overview.js?v=20260920m";
+import { typeIconHtml, pokeImgHtml, itemImgHtml } from "./media.js?v=20260920m";
+import { openMovePickerList } from "./move-picker.js?v=20260920m";
+import { encodeTeamCode, decodeTeamCode, normalizeTeamCodeInput } from "./team-code.js?v=20260920m";
 
 const state = {
   pokemon: [],
@@ -530,6 +533,100 @@ function showImportCode() {
   });
 }
 
+function showBackupPanel() {
+  saveTeamMeta();
+  const json = exportTeamsBackup();
+  openModal(
+    "バックアップ",
+    `<p class="hint">今の構築3枠をJSONで保存／別端末へ移せます。</p>
+    <textarea class="share-code-box" id="backup-out" readonly></textarea>
+    <div class="share-actions">
+      <button type="button" class="icon-btn primary" id="btn-backup-copy">コピー</button>
+      <button type="button" class="icon-btn primary" id="btn-backup-dl">ファイル保存</button>
+      <button type="button" class="icon-btn" id="btn-backup-close">閉じる</button>
+    </div>`
+  );
+  $("backup-out").value = json;
+  $("btn-backup-copy").addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText($("backup-out").value);
+      toast("コピーしました");
+    } catch {
+      $("backup-out").select();
+      document.execCommand("copy");
+      toast("コピーしました");
+    }
+  });
+  $("btn-backup-dl").addEventListener("click", () => {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([json], { type: "application/json" }));
+    a.download = `damekei-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+  });
+  $("btn-backup-close").addEventListener("click", () => closeModal());
+}
+
+function showDataRescue() {
+  const diag = diagnoseStorage();
+  const found = findLegacyTeams();
+  const rows = (diag.rows || [])
+    .slice(0, 20)
+    .map((r) => `${r.key}　${r.bytes}B　構築っぽい:${r.fill}匹`)
+    .join("\n");
+  openModal(
+    "データ救出",
+    `<p class="hint"><strong>いまの場所</strong><br>${diag.origin || location.href}</p>
+    <p class="hint">GitHub Pages と、フォルダを直接開いた（file://）保存は別物です。ここが空でも、PC上の旧ページには残っていることがあります。</p>
+    <pre class="share-code-box" style="min-height:72px;white-space:pre-wrap;font-size:0.75rem">${rows || "(この場所の localStorage は空)"}</pre>
+    <div class="share-actions">
+      <button type="button" class="icon-btn primary" id="btn-try-legacy">${found.length ? `旧データ取込（${found[0].fill}匹）` : "旧データなし"}</button>
+      <a class="icon-btn" href="./recover.html" target="_blank" rel="noopener">救出ページを開く</a>
+    </div>
+    <p class="hint" style="margin-top:10px">JSONを貼り付けて強制復元（recover.html でコピーしたもの／バックアップ）</p>
+    <textarea class="share-code-box" id="rescue-json" placeholder='{"teams":[...]} または [ ... ]'></textarea>
+    <div class="share-actions">
+      <button type="button" class="icon-btn primary" id="btn-rescue-import">JSONを取り込む</button>
+      <label class="icon-btn" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer">
+        ファイル選択<input type="file" id="rescue-file" accept="application/json,.json,text/plain" hidden />
+      </label>
+      <button type="button" class="icon-btn" id="btn-rescue-close">閉じる</button>
+    </div>
+    <p class="hint">PCに残ってる場合: エクスプローラーで <code>ダメ計/recover.html</code> を開き → JSONコピー → ここに貼る</p>`
+  );
+
+  $("btn-try-legacy").disabled = !found.length;
+  $("btn-try-legacy").addEventListener("click", () => {
+    if (!found.length) return;
+    if (!confirm(`「${found[0].key}」から ${found[0].fill} 匹分を上書き復元しますか？`)) return;
+    const res = restoreLegacyTeams({ force: true });
+    state.teams = loadTeams();
+    closeModal();
+    showList();
+    toast(res.ok ? "復元しました" : "失敗");
+    if (!res.ok) alert(res.message);
+  });
+
+  const doImport = (text) => {
+    const res = importTeamsBackup(text, { force: true });
+    if (!res.ok) {
+      alert(res.message);
+      return;
+    }
+    state.teams = loadTeams();
+    closeModal();
+    showList();
+    toast("取り込みました");
+  };
+
+  $("btn-rescue-import").addEventListener("click", () => doImport($("rescue-json").value));
+  $("rescue-file").addEventListener("change", async (e) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    doImport(await f.text());
+  });
+  $("btn-rescue-close").addEventListener("click", () => closeModal());
+}
+
 function wire() {
   wireModalClose();
   wireUiModeToggle();
@@ -582,30 +679,10 @@ function wire() {
   });
 
   $("btn-restore-legacy").addEventListener("click", () => {
-    const found = findLegacyTeams();
-    if (!found.length) {
-      alert(
-        "この端末のこのサイト内に旧データが見つかりません。\n\n・以前 file:// で開いていた／別のURLだった場合は保存場所が別です\n・ブラウザのサイトデータ削除でも消えます"
-      );
-      return;
-    }
-    const best = found[0];
-    const names = best.list
-      .flatMap((t) => (t.members || []).map((m) => m.species).filter(Boolean))
-      .slice(0, 12)
-      .join(" / ");
-    if (
-      !confirm(
-        `旧データ（${best.key}）から ${best.fill} 匹分を、今の構築に上書き復元しますか？\n\n例: ${names || "（なし）"}`
-      )
-    ) {
-      return;
-    }
-    const res = restoreLegacyTeams({ force: true });
-    state.teams = loadTeams();
-    showList();
-    toast(res.ok ? "復元しました" : "復元できませんでした");
-    if (!res.ok) alert(res.message);
+    showDataRescue();
+  });
+  $("btn-backup")?.addEventListener("click", () => {
+    showBackupPanel();
   });
 
   $("roster-list").addEventListener("click", (e) => {

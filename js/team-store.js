@@ -1,7 +1,7 @@
 /**
  * 構築ストレージ（最大3パーティ）
  */
-import { emptyEvs, NATURES } from "./stats.js?v=20260920k";
+import { emptyEvs, NATURES } from "./stats.js?v=20260920m";
 
 export const MAX_TEAMS = 3;
 export const TEAMS_KEY = "damekei-builds-v2";
@@ -73,12 +73,55 @@ function teamFillCount(list) {
 function parseTeamList(raw) {
   if (!raw) return null;
   try {
-    const list = JSON.parse(raw);
-    if (!Array.isArray(list) || !list.length) return null;
-    return list.slice(0, MAX_TEAMS).map((t, i) => normalizeTeam(t, `構築${i + 1}`));
+    const data = typeof raw === "string" ? JSON.parse(raw) : raw;
+    return coerceTeamList(data);
   } catch {
     return null;
   }
+}
+
+/** 配列／単体／{teams:[]} など揺れを吸収 */
+function coerceTeamList(data) {
+  if (!data) return null;
+  let list = null;
+  if (Array.isArray(data)) list = data;
+  else if (Array.isArray(data.teams)) list = data.teams;
+  else if (Array.isArray(data.builds)) list = data.builds;
+  else if (data.members && Array.isArray(data.members)) list = [data];
+  else return null;
+  if (!list.length) return null;
+  // members を持つ要素だけ採用（履歴など誤検出を減らす）
+  const teams = list.filter((t) => t && Array.isArray(t.members));
+  if (!teams.length) return null;
+  return teams.slice(0, MAX_TEAMS).map((t, i) => normalizeTeam(t, `構築${i + 1}`));
+}
+
+/** このオリジンの localStorage 診断 */
+export function diagnoseStorage() {
+  const rows = [];
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key) continue;
+      const raw = localStorage.getItem(key) || "";
+      const list = parseTeamList(raw);
+      rows.push({
+        key,
+        bytes: raw.length,
+        fill: teamFillCount(list),
+        looksLikeTeams: !!list,
+        preview: raw.slice(0, 80),
+      });
+    }
+  } catch (err) {
+    return { origin: location.origin, error: String(err), rows: [] };
+  }
+  rows.sort((a, b) => b.fill - a.fill || b.bytes - a.bytes);
+  return {
+    origin: typeof location !== "undefined" ? location.href : "",
+    protocol: typeof location !== "undefined" ? location.protocol : "",
+    rows,
+  };
 }
 
 /** localStorage 内の旧キー／バックアップから、中身がある構築を探す */
@@ -98,12 +141,11 @@ export function findLegacyTeams() {
     consider(key, parseTeamList(localStorage.getItem(key)));
   }
 
+  // 全キーを走査（damekei 以外に誤って保存された場合も拾う）
   try {
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      if (!key || !key.includes("damekei")) continue;
-      if (key === TEAMS_KEY) continue;
-      if (LEGACY_TEAM_KEYS.includes(key)) continue;
+      if (!key || key === TEAMS_KEY) continue;
       consider(key, parseTeamList(localStorage.getItem(key)));
     }
   } catch {
@@ -190,6 +232,40 @@ export function saveTeams(list) {
   const out = padTeams(list);
   localStorage.setItem(TEAMS_KEY, JSON.stringify(out));
   return out;
+}
+
+/** 全構築のバックアップJSON文字列 */
+export function exportTeamsBackup() {
+  const teams = loadTeams();
+  return JSON.stringify(
+    {
+      app: "damekei",
+      version: 2,
+      exportedAt: new Date().toISOString(),
+      origin: typeof location !== "undefined" ? location.href : "",
+      teams,
+    },
+    null,
+    2
+  );
+}
+
+/** バックアップ／生localStorage文字列から復元 */
+export function importTeamsBackup(text, { force = true } = {}) {
+  const list = parseTeamList(text);
+  if (!list || !teamFillCount(list)) {
+    return { ok: false, fill: 0, message: "構築データとして読めませんでした。JSONを確認してください。" };
+  }
+  const currentFill = teamFillCount(parseTeamList(localStorage.getItem(TEAMS_KEY)));
+  if (!force && currentFill > teamFillCount(list)) {
+    return {
+      ok: false,
+      fill: currentFill,
+      message: `今のデータの方が多いです（今${currentFill} / 取込${teamFillCount(list)}）。強制上書きで続行できます。`,
+    };
+  }
+  const saved = saveTeams(list);
+  return { ok: true, fill: teamFillCount(saved), message: `${teamFillCount(saved)} 匹分を取り込みました。` };
 }
 
 export function getTeam(id) {
