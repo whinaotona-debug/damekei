@@ -358,8 +358,15 @@ html, body {
 .ev-total.warn { color: var(--bad); font-weight: 700; }
 .ability-note { font-size: 0.68rem; color: var(--accent); margin: 0 0 4px; }
 
-select, input[type="text"], input[type="number"], button {
+select, input[type="text"], input[type="number"], input[type="search"], button {
   font: inherit;
+}
+input[type="text"],
+input[type="search"],
+input[type="number"],
+textarea,
+select {
+  font-size: 16px; /* iOS Safari の自動拡大を防ぐ */
 }
 select {
   width: 100%;

@@ -695,10 +695,24 @@ html[data-ui="ipad"] .calc-layout {
 }
 .list-filters input,
 .list-filters select {
-  min-height: 36px;
-  padding: 6px 8px;
+  min-height: 40px;
+  padding: 8px 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
+  font-size: 16px; /* iOS: 16px未満だとフォーカスで拡大される */
+  line-height: 1.3;
+}
+.list-filters input[type="search"] {
+  flex: 1 1 140px;
+  min-width: 0;
+}
+/* フォーム全般の拡大防止 */
+.tools-page input[type="text"],
+.tools-page input[type="search"],
+.tools-page input[type="number"],
+.tools-page textarea,
+.tools-page select {
+  font-size: 16px;
 }
 .list-item {
   width: 100%;
