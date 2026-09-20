@@ -12,16 +12,16 @@ import {
   totalEv,
   clampEvAssign,
   getNature,
-} from "./stats.js?v=20260920g";
-import { TYPES } from "./types.js?v=20260920g";
-import { calculateDamage } from "./damage.js?v=20260920g";
+} from "./stats.js?v=20260920h";
+import { TYPES } from "./types.js?v=20260920h";
+import { calculateDamage } from "./damage.js?v=20260920h";
 import {
   loadTeams,
   getActiveSlot,
   setActiveSlot,
   applyUiMode,
   isMegaName,
-} from "./team-store.js?v=20260920g";
+} from "./team-store.js?v=20260920h";
 import {
   $,
   textMatchesQuery,
@@ -30,9 +30,9 @@ import {
   loadGameData,
   wireModalClose,
   wireUiModeToggle,
-} from "./common.js?v=20260920g";
-import { typeIconHtml } from "./media.js?v=20260920g";
-import { openMovePickerList } from "./move-picker.js?v=20260920g";
+} from "./common.js?v=20260920h";
+import { typeIconHtml } from "./media.js?v=20260920h";
+import { openMovePickerList } from "./move-picker.js?v=20260920h";
 
 const state = {
   pokemon: [],

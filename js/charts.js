@@ -1,9 +1,9 @@
 /**
  * ホーム用: タイプ相性表・性格表 HTML
  */
-import { TYPES, typeEffectiveness } from "./types.js?v=20260920g";
-import { NATURE_TABLE, NATURE_STAT_ORDER, NEUTRAL_NATURES, STAT_LABELS } from "./stats.js?v=20260920g";
-import { typeIconHtml } from "./media.js?v=20260920g";
+import { TYPES, typeEffectiveness } from "./types.js?v=20260920h";
+import { NATURE_TABLE, NATURE_STAT_ORDER, NEUTRAL_NATURES, STAT_LABELS } from "./stats.js?v=20260920h";
+import { typeIconHtml } from "./media.js?v=20260920h";
 
 function multClass(m) {
   if (m === 0) return "x0";

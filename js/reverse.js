@@ -7,8 +7,8 @@ import {
   emptyRanks,
   NATURES,
   STAT_LABELS,
-} from "./stats.js?v=20260920f";
-import { calculateDamage } from "./damage.js?v=20260920f";
+} from "./stats.js?v=20260920h";
+import { calculateDamage } from "./damage.js?v=20260920h";
 
 export const SHORT = { hp: "H", atk: "A", def: "B", spa: "C", spd: "D", spe: "S" };
 

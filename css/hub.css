@@ -722,7 +722,30 @@ html[data-ui="ipad"] .calc-layout {
   color: var(--bad);
 }
 
-/* —— ホーム一覧 —— */
+.mid-row-2 {
+  margin-top: 8px;
+  display: grid;
+  gap: 6px;
+  grid-template-columns: 1fr 1fr;
+}
+.app-icon-link {
+  display: inline-flex;
+  flex: 0 0 auto;
+  border-radius: 10px;
+  line-height: 0;
+}
+.app-icon-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.app-icon {
+  border-radius: 10px;
+  background: #000;
+  object-fit: cover;
+}
+.nav-home {
+  font-weight: 800;
+}
 .home-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

@@ -4,8 +4,8 @@ import {
   getActiveSlot,
   setActiveSlot,
   applyUiMode,
-} from "./team-store.js?v=20260920g";
-import { $, wireUiModeToggle } from "./common.js?v=20260920g";
+} from "./team-store.js?v=20260920h";
+import { $, wireUiModeToggle } from "./common.js?v=20260920h";
 
 const state = { slot: getActiveSlot(), teams: loadTeams() };
 

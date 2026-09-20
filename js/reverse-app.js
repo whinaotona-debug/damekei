@@ -2,14 +2,14 @@ import {
   emptyEvs,
   emptyRanks,
   STAT_LABELS,
-} from "./stats.js?v=20260920g";
-import { TYPES } from "./types.js?v=20260920g";
+} from "./stats.js?v=20260920h";
+import { TYPES } from "./types.js?v=20260920h";
 import {
   loadTeams,
   getActiveSlot,
   setActiveSlot,
   applyUiMode,
-} from "./team-store.js?v=20260920g";
+} from "./team-store.js?v=20260920h";
 import {
   $,
   textMatchesQuery,
@@ -18,14 +18,14 @@ import {
   loadGameData,
   wireModalClose,
   wireUiModeToggle,
-} from "./common.js?v=20260920g";
-import { typeIconHtml, pokeImgHtml } from "./media.js?v=20260920g";
-import { openMovePickerList } from "./move-picker.js?v=20260920g";
+} from "./common.js?v=20260920h";
+import { typeIconHtml, pokeImgHtml } from "./media.js?v=20260920h";
+import { openMovePickerList } from "./move-picker.js?v=20260920h";
 import {
   reverseOffense,
   reverseDefense,
   parseObservedDamage,
-} from "./reverse.js?v=20260920g";
+} from "./reverse.js?v=20260920h";
 
 const state = {
   pokemon: [],

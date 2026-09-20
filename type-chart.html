@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>構築別メモ | ダメ計</title>
+  <meta name="theme-color" content="#1a2b33" />
+  <title>タイプ相性表 | ダメ計</title>
   <link rel="icon" type="image/png" href="./icons/icon.png" />
   <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
   <link rel="stylesheet" href="./css/style.css?v=20260920h" />
@@ -13,28 +14,24 @@
 <body class="tools-page">
   <div class="hub-app">
     <header class="app-header">
-      <a class="app-icon-link" href="./index.html" title="ホーム"><img class="app-icon" src="./icons/icon.png" alt="Poketool" width="36" height="36" /></a>
+      <a class="app-icon-link" href="./index.html" title="ホーム">
+        <img class="app-icon" src="./icons/icon.png" alt="Poketool" width="36" height="36" />
+      </a>
       <div class="titles">
-        <h1>構築別メモ</h1>
-        <p>構築ごとに大きめのメモ欄</p>
+        <h1>タイプ相性表</h1>
+        <p>縦＝技タイプ　横＝防御タイプ</p>
       </div>
       <nav class="hub-nav">
         <a href="./index.html" class="nav-home">ホーム</a>
-        <a href="./notes.html" aria-current="page">メモ</a>
+        <a href="./type-chart.html" aria-current="page">相性</a>
         <div class="ui-toggle">
           <button type="button" data-ui-set="phone">スマホ</button>
           <button type="button" data-ui-set="ipad">iPad</button>
         </div>
       </nav>
     </header>
-    <div class="slot-tabs" id="slot-tabs"></div>
-    <div class="memo-block">
-      <label for="team-memo" id="memo-label">メモ</label>
-      <textarea id="team-memo" placeholder="選出・対面・注意点など"></textarea>
-    </div>
-    <button type="button" class="icon-btn primary" id="btn-save" style="width:100%;min-height:48px">保存</button>
-    <p class="hint" id="toast-line"></p>
+    <div id="type-chart-slot"></div>
   </div>
-  <script type="module" src="./js/notes-app.js?v=20260920h"></script>
+  <script type="module" src="./js/type-chart-app.js?v=20260920h"></script>
 </body>
 </html>

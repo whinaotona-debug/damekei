@@ -1,8 +1,8 @@
 /**
  * 構築概要カード描画 & PNG保存（可能ならアルバム共有）
  */
-import { calcAllStats, emptyEvs, STAT_LABELS, STAT_KEYS } from "./stats.js?v=20260920g";
-import { typeIconHtml, pokeImgHtml, itemImgHtml } from "./media.js?v=20260920g";
+import { calcAllStats, emptyEvs, STAT_LABELS, STAT_KEYS } from "./stats.js?v=20260920h";
+import { typeIconHtml, pokeImgHtml, itemImgHtml } from "./media.js?v=20260920h";
 
 function esc(s) {
   return String(s || "")
