@@ -197,3 +197,67 @@ html[data-ui="ipad"] .overview-grid {
   width: 20px;
   height: 20px;
 }
+
+/* 努力値逆算 */
+.rev-mine-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+html[data-ui="ipad"] .rev-mine-grid {
+  grid-template-columns: repeat(3, 1fr);
+}
+.rev-mine {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  padding: 8px 10px;
+  min-height: var(--ui-tap);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.rev-mine.active {
+  border-color: var(--accent);
+  background: #e8f3f8;
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.rev-mine.empty {
+  opacity: 0.5;
+  cursor: default;
+}
+.rev-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.rev-card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+.rev-ev {
+  font-size: 1.2rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+.rev-nat {
+  margin-top: 4px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+.rev-roll {
+  margin-top: 4px;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+.rev-result-title {
+  margin: 0 0 6px;
+  font-size: 1rem;
+}
