@@ -746,6 +746,25 @@ html[data-ui="ipad"] .calc-layout {
 .nav-home {
   font-weight: 800;
 }
+.share-code-box {
+  width: 100%;
+  min-height: 120px;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+  line-height: 1.45;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  resize: vertical;
+  box-sizing: border-box;
+}
+.share-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
 .home-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

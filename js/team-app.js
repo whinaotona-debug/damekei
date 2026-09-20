@@ -11,8 +11,8 @@ import {
   totalEv,
   clampEvAssign,
   getNature,
-} from "./stats.js?v=20260920h";
-import { TYPES } from "./types.js?v=20260920h";
+} from "./stats.js?v=20260920j";
+import { TYPES } from "./types.js?v=20260920j";
 import {
   loadTeams,
   replaceTeamAt,
@@ -22,7 +22,7 @@ import {
   applyUiMode,
   isMegaName,
   emptyMember,
-} from "./team-store.js?v=20260920h";
+} from "./team-store.js?v=20260920j";
 import {
   $,
   textMatchesQuery,
@@ -31,10 +31,11 @@ import {
   loadGameData,
   wireModalClose,
   wireUiModeToggle,
-} from "./common.js?v=20260920h";
-import { buildOverviewHtml, downloadOverviewPng } from "./overview.js?v=20260920h";
-import { typeIconHtml, pokeImgHtml, itemImgHtml } from "./media.js?v=20260920h";
-import { openMovePickerList } from "./move-picker.js?v=20260920h";
+} from "./common.js?v=20260920j";
+import { buildOverviewHtml, downloadOverviewPng } from "./overview.js?v=20260920j";
+import { typeIconHtml, pokeImgHtml, itemImgHtml } from "./media.js?v=20260920j";
+import { openMovePickerList } from "./move-picker.js?v=20260920j";
+import { encodeTeamCode, decodeTeamCode, normalizeTeamCodeInput } from "./team-code.js?v=20260920j";
 
 const state = {
   pokemon: [],
@@ -460,6 +461,73 @@ function saveTeamMeta() {
   persist();
 }
 
+function catalogs() {
+  return { pokemon: state.pokemon, moves: state.moves, items: state.items };
+}
+
+function showShareCode() {
+  saveTeamMeta();
+  let code;
+  try {
+    code = encodeTeamCode(team(), catalogs());
+  } catch (err) {
+    alert(err.message || "コード化に失敗しました");
+    return;
+  }
+  openModal(
+    "構築数字コード",
+    `<p class="hint">この数字を別の端末の「コード取込」に貼ると、同じ構築をコピーして再編集できます。</p>
+    <textarea class="share-code-box" id="share-code-out" readonly>${code}</textarea>
+    <div class="share-actions">
+      <button type="button" class="icon-btn primary" id="btn-copy-code">コピー</button>
+      <button type="button" class="icon-btn" id="btn-close-share">閉じる</button>
+    </div>
+    <p class="hint">桁数 ${normalizeTeamCodeInput(code).length}　（ハイフンは無視してOK）</p>`
+  );
+  $("btn-copy-code").addEventListener("click", async () => {
+    const text = $("share-code-out").value;
+    try {
+      await navigator.clipboard.writeText(text);
+      toast("コピーしました");
+    } catch {
+      $("share-code-out").select();
+      document.execCommand("copy");
+      toast("コピーしました");
+    }
+  });
+  $("btn-close-share").addEventListener("click", () => closeModal());
+}
+
+function showImportCode() {
+  openModal(
+    "コードから取り込み",
+    `<p class="hint">数字コードを貼り付けてください。現在の構築枠に上書きされます。</p>
+    <textarea class="share-code-box" id="share-code-in" placeholder="1234-5678-9012-..."></textarea>
+    <div class="share-actions">
+      <button type="button" class="icon-btn primary" id="btn-do-import">取り込む</button>
+      <button type="button" class="icon-btn" id="btn-cancel-import">キャンセル</button>
+    </div>`
+  );
+  $("btn-cancel-import").addEventListener("click", () => closeModal());
+  $("btn-do-import").addEventListener("click", () => {
+    const raw = $("share-code-in").value;
+    let imported;
+    try {
+      imported = decodeTeamCode(raw, catalogs());
+    } catch (err) {
+      alert(err.message || "取り込みに失敗しました");
+      return;
+    }
+    const names = imported.members.filter((m) => m.species).map((m) => m.species).join(" / ") || "（空）";
+    if (!confirm(`この構築枠に上書きしますか？\n\n${imported.name}\n${names}`)) return;
+    replaceTeamAt(state.slot, imported);
+    state.teams = loadTeams();
+    closeModal();
+    showList();
+    toast("取り込みました");
+  });
+}
+
 function wire() {
   wireModalClose();
   wireUiModeToggle();
@@ -502,6 +570,13 @@ function wire() {
   $("btn-overview").addEventListener("click", () => {
     saveTeamMeta();
     showOverview();
+  });
+
+  $("btn-share-code").addEventListener("click", () => {
+    showShareCode();
+  });
+  $("btn-import-code").addEventListener("click", () => {
+    showImportCode();
   });
 
   $("roster-list").addEventListener("click", (e) => {
