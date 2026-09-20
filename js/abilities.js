@@ -13,6 +13,8 @@ export const ABILITY_NOTES = {
   リベロ: "技タイプに変化してSTAB",
   じきゅうりょく: "被弾ごとに防御+1",
   かたやぶり: "相手の特性を無視",
+  はどうのぼうご: "接触技で受けるダメージが半分（メガルカリオZ）",
+  きれあじ: "切る技の威力×1.5",
 };
 
 /** 攻撃側が相手特性を無視できるか */
@@ -243,6 +245,10 @@ export function modifyDefensiveDamage({
       m *= 0.5;
       notes.push("もふもふ: 接触×0.5");
     }
+  }
+  if (defAb === "はどうのぼうご" && move.contact) {
+    m *= 0.5;
+    notes.push("はどうのぼうご: 接触×0.5");
   }
   if (defAb === "すいほう" && moveType === "ほのお") {
     m *= 2;

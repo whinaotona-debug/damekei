@@ -101,7 +101,7 @@ export function itemSpriteId(jaName) {
 /** Showdown id → pokesprite 風ハイフン名 */
 function toHyphenSpriteId(id) {
   let s = String(id || "");
-  s = s.replace(/megax$/, "-mega-x").replace(/megay$/, "-mega-y").replace(/mega$/, "-mega");
+  s = s.replace(/megaz$/, "-mega-z").replace(/megax$/, "-mega-x").replace(/megay$/, "-mega-y").replace(/mega$/, "-mega");
   s = s
     .replace(/alola$/, "-alola")
     .replace(/galar$/, "-galar")
