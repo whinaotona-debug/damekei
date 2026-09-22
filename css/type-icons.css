@@ -149,17 +149,19 @@
     grid-template-columns: 1fr 1fr;
   }
 }
-html[data-ui="ipad"] .overview-grid {
-  grid-template-columns: 1fr 1fr;
-}
 .ov-card {
   min-height: 148px;
   padding: 14px 16px;
+  overflow: visible;
 }
 .ov-main {
-  grid-template-columns: 1.15fr auto 1.1fr;
+  grid-template-columns: minmax(0, 1.15fr) auto minmax(0, 1.1fr);
   gap: 12px;
   align-items: center;
+}
+.ov-left {
+  min-width: 0;
+  overflow: visible;
 }
 .ov-sprite-wrap {
   display: flex;
@@ -188,6 +190,56 @@ html[data-ui="ipad"] .overview-grid {
   font-size: 1.6rem;
 }
 
+/* スマホ構築概要: 縦積み・文字大きめ */
+@media (max-width: 699px) {
+  .modal.open.overview-modal .modal-body {
+    padding: 6px 8px 20px;
+  }
+  .overview-sheet {
+    padding: 12px 10px 18px;
+    min-height: auto;
+  }
+  .ov-card {
+    min-height: 0;
+    padding: 12px;
+  }
+  .ov-main {
+    grid-template-columns: 1fr !important;
+    gap: 10px;
+    align-items: stretch;
+  }
+  .ov-sprite-wrap {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 10px;
+  }
+  .ov-sprite-wrap .poke-img {
+    width: 84px !important;
+    height: 84px !important;
+  }
+  .ov-name {
+    font-size: 1.28rem;
+  }
+  .ov-meta {
+    font-size: 0.92rem;
+  }
+  .ov-stats {
+    font-size: 0.9rem;
+  }
+  .ov-moves {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .ov-move {
+    font-size: 1rem;
+    min-height: 36px;
+  }
+  .overview-title {
+    font-size: 1.55rem;
+  }
+}
+
 .roster-row .poke-img {
   width: 52px;
   height: 52px;
@@ -203,6 +255,11 @@ html[data-ui="ipad"] .overview-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 6px;
+}
+@media (min-width: 768px) {
+  .rev-mine-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 html[data-ui="ipad"] .rev-mine-grid {
   grid-template-columns: repeat(3, 1fr);

@@ -451,22 +451,106 @@ body.tools-page {
   display: grid;
   gap: 10px;
 }
-.battle-field {
+.battle-arena {
   display: grid;
-  grid-template-columns: 1fr 1fr;
   gap: 10px;
+  background: linear-gradient(180deg, #7eb6d9 0%, #c8e4f0 42%, #8fbc6b 42%, #6a9a4e 100%);
+  border-radius: 14px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  overflow: hidden;
 }
-@media (max-width: 700px) {
-  .battle-field { grid-template-columns: 1fr; }
+.battle-field-status {
+  display: grid;
+  gap: 2px;
+  background: rgba(20, 36, 58, 0.72);
+  color: #e8eef8;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.78rem;
 }
 .battle-side {
-  background: var(--panel);
+  background: rgba(255, 255, 255, 0.88);
   border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: 12px;
   padding: 10px;
   box-shadow: var(--shadow);
+  transition: transform 0.12s ease;
 }
-.battle-side.foe { border-color: var(--accent2); }
+.battle-side.foe { border-color: #c45c5c; }
+.battle-side.player { border-color: var(--accent); }
+.battle-side.hit {
+  animation: battle-hit 0.35s ease;
+}
+@keyframes battle-hit {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  50% { transform: translateX(6px); }
+  75% { transform: translateX(-3px); }
+}
+.battle-mon {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: space-between;
+}
+.battle-side.foe .battle-mon { flex-direction: row; }
+.battle-side.player .battle-mon { flex-direction: row; }
+.battle-mon-info { flex: 1; min-width: 0; }
+.battle-name-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: baseline;
+}
+.battle-hp-text {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.battle-meta {
+  font-size: 0.78rem;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.battle-sprite {
+  flex: 0 0 auto;
+  width: 96px;
+  height: 96px;
+  display: grid;
+  place-items: center;
+}
+.battle-sprite.atk {
+  animation: battle-atk 0.28s ease;
+}
+.battle-sprite.faint {
+  opacity: 0.35;
+  filter: grayscale(0.8);
+  transition: opacity 0.4s ease;
+}
+@keyframes battle-atk {
+  0% { transform: translateY(0); }
+  40% { transform: translateY(-10px) scale(1.05); }
+  100% { transform: translateY(0); }
+}
+.battle-party-dots {
+  display: flex;
+  gap: 5px;
+  margin-top: 6px;
+}
+.party-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #9bb0c0;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.2);
+}
+.party-dot.active { background: #2a7a4b; }
+.party-dot.ready { background: #5cba7a; }
+.party-dot.out { background: #c9d0d6; opacity: 0.5; }
 .hp-bar {
   height: 12px;
   background: #dde5ea;
@@ -478,19 +562,46 @@ body.tools-page {
   display: block;
   height: 100%;
   background: linear-gradient(90deg, #2a7a4b, #5cba7a);
+  transition: width 0.35s ease;
 }
 .hp-bar.low > span { background: linear-gradient(90deg, #a33b3b, #e07a7a); }
+.battle-cmd {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px;
+}
 .battle-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 6px;
+}
+.battle-move.disabled,
+.battle-move:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.battle-result {
+  font-size: 1.4rem;
+  font-weight: 800;
+  text-align: center;
+  padding: 16px;
+}
+.battle-result.win { color: #1f7a3a; }
+.battle-result.lose { color: #a33b3b; }
+.mega-btn {
+  grid-column: 1 / -1;
+  background: linear-gradient(90deg, #6b2d8b, #c45c9a);
+  color: #fff;
+  border: none;
+  font-weight: 800;
 }
 .battle-log {
   background: #1a2430;
   color: #e8eef2;
   border-radius: var(--radius);
   padding: 10px;
-  max-height: 220px;
+  max-height: 240px;
   overflow: auto;
   font-size: 0.82rem;
   line-height: 1.4;
@@ -500,6 +611,7 @@ body.tools-page {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  align-items: center;
 }
 .select-chip {
   border: 2px solid var(--line);
@@ -508,6 +620,9 @@ body.tools-page {
   padding: 8px 10px;
   cursor: pointer;
   min-width: 120px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 .select-chip.on {
   border-color: var(--accent);
@@ -516,4 +631,9 @@ body.tools-page {
 .select-chip.disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+.foe-preview-chip {
+  cursor: default;
+  background: #f4f7fa;
+  min-width: 140px;
 }

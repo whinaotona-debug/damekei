@@ -1,4 +1,4 @@
-import { emptyEvs, emptyRanks } from "./stats.js?v=20260919e";
+﻿import { emptyEvs, emptyRanks } from "./stats.js?v=20260919e";
 import { calculateDamage } from "./damage.js?v=20260919e";
 import {
   loadTeams,
@@ -8,7 +8,7 @@ import {
   getNote,
   saveNote,
   damekeiQuery,
-} from "./team-store.js?v=20260919e";
+} from "./team-store.js?v=20260922c";
 
 const state = {
   pokemon: [],

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ja" data-ui="phone">
 <head>
   <meta charset="UTF-8" />
@@ -6,80 +6,76 @@
   <meta name="theme-color" content="#1a2b33" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta http-equiv="Cache-Control" content="no-cache" />
-  <title>&#12480;&#12513;&#35336; | &#19968;&#25324;&#35336;&#31639;</title>
+  <title>ダメ計 | 構築から攻撃</title>
   <link rel="icon" type="image/png" href="./icons/icon.png" />
   <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
-  <link rel="stylesheet" href="./css/style.css?v=20260920n" />
-  <link rel="stylesheet" href="./css/hub.css?v=20260920n" />
-  <link rel="stylesheet" href="./css/type-icons.css?v=20260920i" />
+  <link rel="stylesheet" href="./css/style.css?v=20260922c" />
+  <link rel="stylesheet" href="./css/hub.css?v=20260922c" />
+  <link rel="stylesheet" href="./css/type-icons.css?v=20260922c" />
 </head>
 <body class="tools-page">
   <div class="hub-app">
     <header class="app-header">
-      <a class="app-icon-link" href="./index.html" title="&#12507;&#12540;&#12512;">
+      <a class="app-icon-link" href="./index.html" title="ホーム">
         <img class="app-icon" src="./icons/icon.png" alt="Poketool" width="36" height="36" />
       </a>
       <div class="titles">
-        <h1>&#12480;&#12513;&#35336;</h1>
-        <p>&#25915;&#25731;1&#21305; &#8594; &#27083;&#31689;6&#21305;&#12408;&#19968;&#25324;</p>
+        <h1>ダメ計</h1>
+        <p>構築1匹 → 相手へ攻撃</p>
       </div>
       <nav class="hub-nav">
-        <a href="./index.html" class="nav-home">&#12507;&#12540;&#12512;</a>
-        <a href="./dame.html" aria-current="page">&#12480;&#12513;&#35336;</a>
-        <div class="ui-toggle">
-          <button type="button" data-ui-set="phone">&#12473;&#12510;&#12507;</button>
-          <button type="button" data-ui-set="ipad">iPad</button>
-        </div>
-        <div class="result-mini" id="result-mini">-</div>
+        <a href="./index.html" class="nav-home">ホーム</a>
+        <a href="./dame.html" aria-current="page">ダメ計</a>
+<div class="result-mini" id="result-mini">-</div>
       </nav>
     </header>
 
     <div class="team-toolbar">
-      <label class="field-label" for="team-slot">&#21463;&#12369;&#20596;&#12398;&#27083;&#31689;</label>
-      <select id="team-slot" aria-label="&#27083;&#31689;&#36984;&#25246;"></select>
-      <button type="button" class="icon-btn" id="btn-edit-team">&#27083;&#31689;&#12434;&#32232;&#38598;</button>
+      <label class="field-label" for="team-slot">攻撃側の構築</label>
+      <select id="team-slot" aria-label="構築選択"></select>
+      <button type="button" class="icon-btn" id="btn-edit-team">構築を編集</button>
     </div>
 
     <div class="calc-layout">
       <section class="calc-attacker">
-        <h2>&#25915;&#25731;&#20596;</h2>
-        <div class="poke-slot" id="atk-slot" tabindex="0" role="button">&#12479;&#12483;&#12503;&#12391;&#12509;&#12465;&#12514;&#12531;&#36984;&#25246;</div>
-        <div id="atk-detail" class="poke-detail" hidden></div>
+        <h2>自分（構築から1匹）</h2>
+        <div class="rev-mine-grid" id="my-pick"></div>
+        <div id="atk-detail" class="poke-detail"></div>
 
-        <div class="mid-row mid-row-2">
+        <div class="mid-row">
           <button type="button" class="selector-btn" id="move-btn">
-            <div class="k">&#20351;&#12358;&#25216;</div>
-            <div class="title">&#25216;&#12434;&#36984;&#25246;</div>
-          </button>
-          <button type="button" class="selector-btn" id="atk-item-btn">
-            <div class="k">&#25915;&#25731;&#25345;&#12385;&#29289;</div>
-            <div class="title">&#12394;&#12375;</div>
+            <div class="k">使う技</div>
+            <div class="title">技を選択</div>
           </button>
         </div>
 
+        <h2 style="margin-top:12px">相手</h2>
+        <div class="poke-slot foe-slot" id="foe-slot" tabindex="0" role="button">相手を選ぶ</div>
+        <div id="foe-detail" class="poke-detail" hidden></div>
+
         <div class="field-compact">
-          <label>&#22825;&#20505;<select id="weather">
-            <option value="&#12394;&#12375;">&#12394;&#12375;</option>
-            <option value="&#12399;&#12428;">&#26228;&#12428;</option>
-            <option value="&#12354;&#12417;">&#38632;</option>
-            <option value="&#12377;&#12394;&#12354;&#12425;&#12375;">&#30722;</option>
-            <option value="&#12422;&#12365;">&#38634;</option>
+          <label>天候<select id="weather">
+            <option value="なし">なし</option>
+            <option value="はれ">晴れ</option>
+            <option value="あめ">雨</option>
+            <option value="すなあらし">砂</option>
+            <option value="ゆき">雪</option>
           </select></label>
-          <label>&#22580;<select id="field">
-            <option value="&#12394;&#12375;">&#12394;&#12375;</option>
-            <option value="&#12456;&#12524;&#12461;&#12501;&#12451;&#12540;&#12523;&#12489;">&#12456;&#12524;&#12461;</option>
-            <option value="&#12464;&#12521;&#12473;&#12501;&#12451;&#12540;&#12523;&#12489;">&#12464;&#12521;&#12473;</option>
-            <option value="&#12469;&#12452;&#12467;&#12501;&#12451;&#12540;&#12523;&#12489;">&#12469;&#12452;&#12467;</option>
-            <option value="&#12511;&#12473;&#12488;&#12501;&#12451;&#12540;&#12523;&#12489;">&#12511;&#12473;&#12488;</option>
+          <label>場<select id="field">
+            <option value="なし">なし</option>
+            <option value="エレキフィールド">エレキ</option>
+            <option value="グラスフィールド">グラス</option>
+            <option value="サイコフィールド">サイコ</option>
+            <option value="ミストフィールド">ミスト</option>
           </select></label>
-          <label>&#30064;&#24120;<select id="atk-status">
-            <option value="&#12394;&#12375;">&#12394;&#12375;</option>
-            <option value="&#12420;&#12369;&#12393;">&#12420;&#12369;&#12393;</option>
-            <option value="&#12414;&#12402;">&#12414;&#12402;</option>
-            <option value="&#12393;&#12367;">&#12393;&#12367;</option>
-            <option value="&#12418;&#12358;&#12393;&#12367;">&#12418;&#12358;&#12393;&#12367;</option>
+          <label>異常<select id="atk-status">
+            <option value="なし">なし</option>
+            <option value="やけど">やけど</option>
+            <option value="まひ">まひ</option>
+            <option value="どく">どく</option>
+            <option value="もうどく">もうどく</option>
           </select></label>
-          <label>&#12414;&#12365;&#12403;&#12375;<select id="spikes">
+          <label>まきびし<select id="spikes">
             <option value="0">0</option>
             <option value="1">1</option>
             <option value="2">2</option>
@@ -88,25 +84,25 @@
         </div>
 
         <div class="check-list compact">
-          <label><input type="checkbox" id="critical" />&#24613;&#25152;</label>
-          <label><input type="checkbox" id="reflect" />&#12522;&#12501;&#12524;&#12463;</label>
-          <label><input type="checkbox" id="lightScreen" />&#20809;&#12398;&#22721;</label>
-          <label><input type="checkbox" id="auroraVeil" />&#12505;&#12540;&#12523;</label>
-          <label><input type="checkbox" id="stealthRock" />&#12473;&#12486;&#12525;</label>
-          <label><input type="checkbox" id="leechSeed" />&#12420;&#12393;&#12426;&#12366;</label>
-          <label><input type="checkbox" id="burnChip" />&#12420;&#12369;&#12393;D</label>
-          <label><input type="checkbox" id="poisonChip" />&#12393;&#12367;D</label>
-          <label><input type="checkbox" id="gravity" />&#37325;&#21147;</label>
-          <label><input type="checkbox" id="helpBoost" />&#12390;&#12384;&#12377;&#12369;</label>
-          <label><input type="checkbox" id="hpNotFull" />&#30456;&#25163;HP&#38750;&#28288;&#12479;&#12531;</label>
-          <label><input type="checkbox" id="movingLast" />&#24460;&#25915;(&#12364;&#12435;&#12379;&#12365;)</label>
+          <label><input type="checkbox" id="critical" />急所</label>
+          <label><input type="checkbox" id="reflect" />リフレク</label>
+          <label><input type="checkbox" id="lightScreen" />光の壁</label>
+          <label><input type="checkbox" id="auroraVeil" />ベール</label>
+          <label><input type="checkbox" id="stealthRock" />ステロ</label>
+          <label><input type="checkbox" id="leechSeed" />やどりぎ</label>
+          <label><input type="checkbox" id="burnChip" />やけどD</label>
+          <label><input type="checkbox" id="poisonChip" />どくD</label>
+          <label><input type="checkbox" id="gravity" />重力</label>
+          <label><input type="checkbox" id="helpBoost" />てだすけ</label>
+          <label><input type="checkbox" id="hpNotFull" />相手HP非満タン</label>
+          <label><input type="checkbox" id="movingLast" />後攻(がんせき)</label>
         </div>
       </section>
 
       <section class="calc-results">
-        <h2 id="results-title">&#23550; &#27083;&#31689;6&#21305;&#12398;&#12480;&#12513;&#12540;&#12472;</h2>
+        <h2 id="results-title">ダメージ結果</h2>
         <div class="bulk-results" id="bulk-results">
-          <p class="hint">&#25915;&#25731;&#12509;&#12465;&#12514;&#12531;&#12392;&#25216;&#12434;&#36984;&#12406;&#12392;&#12289;&#21463;&#12369;&#20596;6&#21305;&#12408;&#12398;&#12480;&#12513;&#12540;&#12472;&#12364;&#20986;&#12414;&#12377;</p>
+          <p class="hint">構築の1匹・技・相手を選ぶとダメージが出ます</p>
         </div>
       </section>
     </div>
@@ -115,13 +111,13 @@
   <div class="modal" id="modal" aria-hidden="true">
     <div class="modal-card" role="dialog" aria-modal="true">
       <div class="modal-head">
-        <h3 id="modal-title">&#36984;&#25246;</h3>
-        <button type="button" class="icon-btn" id="modal-close">&#38281;&#12376;&#12427;</button>
+        <h3 id="modal-title">選択</h3>
+        <button type="button" class="icon-btn" id="modal-close">閉じる</button>
       </div>
       <div class="modal-body" id="modal-body"></div>
     </div>
   </div>
 
-  <script type="module" src="./js/calc-app.js?v=20260920i"></script>
+  <script type="module" src="./js/calc-app.js?v=20260922a"></script>
 </body>
 </html>

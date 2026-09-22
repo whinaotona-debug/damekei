@@ -55,21 +55,30 @@ export function wireModalClose() {
 }
 
 export function wireUiModeToggle() {
+  // 旧トグル互換: 画面幅に自動追従（二重登録防止）
+  if (window.__damekeiUiWired) {
+    const mode = window.matchMedia("(min-width: 768px)").matches ? "ipad" : "phone";
+    document.documentElement.dataset.ui = mode;
+    return;
+  }
+  window.__damekeiUiWired = true;
   const root = document.documentElement;
-  const apply = (mode) => {
+  const apply = () => {
+    const mode = window.matchMedia("(min-width: 768px)").matches ? "ipad" : "phone";
     root.dataset.ui = mode;
-    document.querySelectorAll("[data-ui-set]").forEach((btn) => {
-      btn.classList.toggle("active", btn.getAttribute("data-ui-set") === mode);
-    });
   };
-  document.querySelectorAll("[data-ui-set]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const mode = btn.getAttribute("data-ui-set") === "ipad" ? "ipad" : "phone";
-      localStorage.setItem("damekei-ui-mode", mode);
-      apply(mode);
-    });
-  });
-  apply(localStorage.getItem("damekei-ui-mode") === "ipad" ? "ipad" : "phone");
+  apply();
+  let timer = 0;
+  const onChange = () => {
+    clearTimeout(timer);
+    timer = setTimeout(apply, 80);
+  };
+  window.addEventListener("resize", onChange);
+  try {
+    window.matchMedia("(min-width: 768px)").addEventListener("change", onChange);
+  } catch {
+    /* older browsers */
+  }
 }
 
 export function wireAppNav() {

@@ -1,4 +1,4 @@
-import {
+﻿import {
   NATURE_TABLE,
   NATURE_STAT_ORDER,
   NEUTRAL_NATURES,
@@ -24,7 +24,7 @@ import {
   emptyMember,
   restoreLegacyTeams,
   findLegacyTeams,
-} from "./team-store.js?v=20260920k";
+} from "./team-store.js?v=20260922c";
 import {
   $,
   textMatchesQuery,
@@ -33,9 +33,9 @@ import {
   loadGameData,
   wireModalClose,
   wireUiModeToggle,
-} from "./common.js?v=20260920k";
-import { buildOverviewHtml, downloadOverviewPng } from "./overview.js?v=20260920k";
-import { typeIconHtml, pokeImgHtml, itemImgHtml } from "./media.js?v=20260920m";
+} from "./common.js?v=20260922c";
+import { buildOverviewHtml, downloadOverviewPng } from "./overview.js?v=20260922a";
+import { typeIconHtml, pokeImgHtml, itemImgHtml } from "./media.js?v=20260922a";
 import { openMovePickerList } from "./move-picker.js?v=20260920k";
 import { encodeTeamCode, decodeTeamCode, normalizeTeamCodeInput } from "./team-code.js?v=20260920k";
 

@@ -1,6 +1,6 @@
-import { calcStat, applyRank, emptyEvs } from "./stats.js?v=20260920h";
-import { applyUiMode } from "./team-store.js?v=20260920h";
-import { $, textMatchesQuery, openModal, closeModal, loadGameData, wireModalClose, wireUiModeToggle } from "./common.js?v=20260920h";
+﻿import { calcStat, applyRank, emptyEvs } from "./stats.js?v=20260920h";
+import { applyUiMode } from "./team-store.js?v=20260922c";
+import { $, textMatchesQuery, openModal, closeModal, loadGameData, wireModalClose, wireUiModeToggle } from "./common.js?v=20260922c";
 import { pokeImgHtml } from "./media.js?v=20260920m";
 
 const state = { pokemon: [], a: null, b: null };

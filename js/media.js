@@ -1,9 +1,11 @@
 /**
  * タイプアイコン・ポケモン/持ち物スプライト
  */
-import mediaIds from "./media-ids.js?v=20260920m";
+import mediaIds from "./media-ids.js?v=20260922a";
 
 const ITEM_SPRITE = "https://play.pokemonshowdown.com/sprites/itemicons";
+const ITEM_POKEAPI = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items";
+const ITEM_POKESPRITE = "https://raw.githubusercontent.com/msikma/pokesprite/master/items/hold-item";
 
 const POKE_ALIAS = {
   イッカネズミ: "mausholdfour",
@@ -16,8 +18,111 @@ const ITEM_ALIAS = {
   こだわりメガネ: "choicespecs",
   こだわりスカーフ: "choicescarf",
   メガストーン: "latiasite",
+  ながねぎ: "stick",
+  ようせいのハネ: "fairyfeather",
   なし: "",
 };
+
+/** Showdown の itemicons はハイフン付きファイル名が多い */
+const ITEM_HYPHEN = {
+  choiceband: "choice-band",
+  choicespecs: "choice-specs",
+  choicescarf: "choice-scarf",
+  lifeorb: "life-orb",
+  focussash: "focus-sash",
+  focusband: "focus-band",
+  whiteherb: "white-herb",
+  mentalherb: "mental-herb",
+  sitrusberry: "sitrus-berry",
+  assaultvest: "assault-vest",
+  expertbelt: "expert-belt",
+  muscleband: "muscle-band",
+  wiseglasses: "wise-glasses",
+  softsand: "soft-sand",
+  hardstone: "hard-stone",
+  miracleseed: "miracle-seed",
+  blackbelt: "black-belt",
+  mysticwater: "mystic-water",
+  sharpbeak: "sharp-beak",
+  poisonbarb: "poison-barb",
+  nevermeltice: "never-melt-ice",
+  spelltag: "spell-tag",
+  twistedspoon: "twisted-spoon",
+  dragonfang: "dragon-fang",
+  silkscarf: "silk-scarf",
+  shellbell: "shell-bell",
+  widelens: "wide-lens",
+  zoomlens: "zoom-lens",
+  scopelens: "scope-lens",
+  ironball: "iron-ball",
+  icyrock: "icy-rock",
+  smoothrock: "smooth-rock",
+  heatrock: "heat-rock",
+  damprock: "damp-rock",
+  shedshell: "shed-shell",
+  bigroot: "big-root",
+  rockyhelmet: "rocky-helmet",
+  airballoon: "air-balloon",
+  bindingband: "binding-band",
+  redcard: "red-card",
+  ejectbutton: "eject-button",
+  normalgem: "normal-gem",
+  terrainextender: "terrain-extender",
+  electricseed: "electric-seed",
+  psychicseed: "psychic-seed",
+  mistyseed: "misty-seed",
+  grassyseed: "grassy-seed",
+  fairyfeather: "fairy-feather",
+  lightball: "light-ball",
+  quickclaw: "quick-claw",
+  kingsrock: "kings-rock",
+  silverpowder: "silver-powder",
+  brightpowder: "bright-powder",
+  metalcoat: "metal-coat",
+  lightclay: "light-clay",
+  stick: "stick",
+  leek: "stick",
+  blackglasses: "blackglasses",
+  leftovers: "leftovers",
+  eviolite: "eviolite",
+  charcoal: "charcoal",
+  magnet: "magnet",
+  metronome: "metronome",
+  latiasite: "latiasite",
+};
+
+for (const b of [
+  "cheri",
+  "chesto",
+  "pecha",
+  "rawst",
+  "aspear",
+  "leppa",
+  "oran",
+  "persim",
+  "lum",
+  "sitrus",
+  "occa",
+  "passho",
+  "wacan",
+  "rindo",
+  "yache",
+  "chople",
+  "kebia",
+  "shuca",
+  "coba",
+  "payapa",
+  "tanga",
+  "charti",
+  "kasib",
+  "haban",
+  "colbur",
+  "babiri",
+  "roseli",
+  "chilan",
+]) {
+  ITEM_HYPHEN[`${b}berry`] = `${b}-berry`;
+}
 
 export const TYPE_COLORS = {
   ノーマル: "#929da3",
@@ -107,6 +212,13 @@ export function itemSpriteId(jaName) {
   return ITEM_ALIAS[jaName] || mediaIds.items?.[jaName] || "";
 }
 
+function itemHyphenId(id) {
+  if (!id) return "";
+  if (ITEM_HYPHEN[id]) return ITEM_HYPHEN[id];
+  if (id.includes("-")) return id;
+  return id;
+}
+
 /** Showdown id → pokesprite 風ハイフン名 */
 function toHyphenSpriteId(id) {
   let s = String(id || "");
@@ -156,9 +268,61 @@ export function pokeSpriteUrls(jaName, dex) {
   return [...new Set(urls)];
 }
 
-export function itemSpriteUrl(jaName) {
+/** CORS しやすい順（概要PNG用） */
+export function pokeSpriteUrlsForCapture(jaName, dex) {
+  const id = pokeSpriteId(jaName);
+  const mega = isMegaJa(jaName);
+  const urls = [];
+  const hy = id ? toHyphenSpriteId(id) : "";
+  const local = (id && LOCAL_SPRITE_BY_ID[id]) || (hy && LOCAL_SPRITE_BY_ID[hy]);
+  if (local) urls.push(local);
+  if (!mega && dex && Number(dex) > 0) {
+    const n = Number(dex);
+    urls.push(`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${n}.png`);
+    urls.push(`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${n}.png`);
+  }
+  if (hy) {
+    urls.push(`https://raw.githubusercontent.com/msikma/pokesprite/master/pokemon-gen8/regular/${hy}.png`);
+  }
+  if (id) {
+    const showdownIds = hy && hy !== id ? [hy, id] : [id];
+    for (const sid of showdownIds) {
+      urls.push(`https://play.pokemonshowdown.com/sprites/home-centered/${sid}.png`);
+      urls.push(`https://play.pokemonshowdown.com/sprites/dex/${sid}.png`);
+      urls.push(`https://play.pokemonshowdown.com/sprites/gen5/${sid}.png`);
+    }
+  }
+  return [...new Set(urls)];
+}
+
+export function itemSpriteUrls(jaName) {
   const id = itemSpriteId(jaName);
-  return id ? `${ITEM_SPRITE}/${id}.png` : "";
+  if (!id) return [];
+  const hy = itemHyphenId(id);
+  const urls = [];
+  for (const sid of [...new Set([hy, id, id === "leek" ? "stick" : ""].filter(Boolean))]) {
+    urls.push(`${ITEM_SPRITE}/${sid}.png`);
+    urls.push(`${ITEM_POKEAPI}/${sid}.png`);
+    urls.push(`${ITEM_POKESPRITE}/${sid}.png`);
+  }
+  // ようせいのハネはCDNに無いことが多いので簡易SVGも用意
+  if (jaName === "ようせいのハネ") {
+    urls.push(`${ITEM_SPRITE}/miracleseed.png`);
+    urls.push(`${ITEM_SPRITE}/miracle-seed.png`);
+    urls.push(`${ITEM_POKEAPI}/miracle-seed.png`);
+    urls.push(
+      "data:image/svg+xml," +
+        encodeURIComponent(
+          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="#ec8fe6" d="M12 2c4 6 8 7 10 5-1 5-4 8-7 10 4 1 7 5 7 9-5-1-9-4-12-8-3 4-7 7-12 8 0-4 3-8 7-9C5 15 2 12 1 7c2 2 6 1 11-5z"/></svg>'
+        )
+    );
+  }
+  return [...new Set(urls)];
+}
+
+export function itemSpriteUrl(jaName) {
+  const urls = itemSpriteUrls(jaName);
+  return urls[0] || "";
 }
 
 export function typeIconHtml(type, { size = "md" } = {}) {
@@ -177,24 +341,27 @@ export function typePillHtml(type) {
   return `<span class="type-pill-row">${typeIconHtml(type, { size: "sm" })}<span class="type-pill-label">${esc(type)}</span></span>`;
 }
 
-export function pokeImgHtml(jaName, { cls = "poke-img", size = 64, dex = 0, round = false } = {}) {
-  const urls = pokeSpriteUrls(jaName, dex);
+export function pokeImgHtml(jaName, { cls = "poke-img", size = 64, dex = 0, round = false, forCapture = false } = {}) {
+  const urls = forCapture ? pokeSpriteUrlsForCapture(jaName, dex) : pokeSpriteUrls(jaName, dex);
   const label = esc((jaName || "?").slice(0, 2));
   const roundCls = round ? " round" : "";
   if (!urls.length) {
     return `<span class="${cls} missing${roundCls}" style="width:${size}px;height:${size}px">${label}</span>`;
   }
   const dataUrls = esc(JSON.stringify(urls));
-  return `<img class="${cls}${roundCls}" src="${esc(urls[0])}" width="${size}" height="${size}" alt="${esc(jaName || "")}" loading="lazy" decoding="async" referrerpolicy="no-referrer" data-urls="${dataUrls}" data-i="0" data-label="${label}" onerror="(function(el){var u=[];try{u=JSON.parse(el.getAttribute('data-urls')||'[]')}catch(e){}var i=(+el.dataset.i||0)+1;if(i<u.length){el.dataset.i=i;el.src=u[i];}else{var s=document.createElement('span');s.className=el.className+' missing';s.style.width=el.width+'px';s.style.height=el.height+'px';s.textContent=el.dataset.label||'?';el.replaceWith(s);}})(this)" />`;
+  const cors = forCapture ? ' crossorigin="anonymous"' : "";
+  return `<img class="${cls}${roundCls}" src="${esc(urls[0])}" width="${size}" height="${size}" alt="${esc(jaName || "")}" loading="${forCapture ? "eager" : "lazy"}" decoding="async" referrerpolicy="no-referrer"${cors} data-urls="${dataUrls}" data-i="0" data-label="${label}" onerror="(function(el){var u=[];try{u=JSON.parse(el.getAttribute('data-urls')||'[]')}catch(e){}var i=(+el.dataset.i||0)+1;if(i<u.length){el.dataset.i=i;el.src=u[i];}else{var s=document.createElement('span');s.className=el.className+' missing';s.style.width=el.width+'px';s.style.height=el.height+'px';s.textContent=el.dataset.label||'?';el.replaceWith(s);}})(this)" />`;
 }
 
-export function itemImgHtml(jaName, { cls = "item-img", size = 24 } = {}) {
+export function itemImgHtml(jaName, { cls = "item-img", size = 24, forCapture = false } = {}) {
   if (!jaName || jaName === "なし") {
     return `<span class="${cls} missing" style="width:${size}px;height:${size}px"></span>`;
   }
-  const url = itemSpriteUrl(jaName);
-  if (!url) {
-    return `<span class="${cls} missing" style="width:${size}px;height:${size}px">?</span>`;
+  const urls = itemSpriteUrls(jaName);
+  if (!urls.length) {
+    return `<span class="${cls} missing" style="width:${size}px;height:${size}px" title="${esc(jaName)}">?</span>`;
   }
-  return `<img class="${cls}" src="${esc(url)}" width="${size}" height="${size}" alt="${esc(jaName)}" title="${esc(jaName)}" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.style.opacity='0'" />`;
+  const dataUrls = esc(JSON.stringify(urls));
+  const cors = forCapture ? ' crossorigin="anonymous"' : "";
+  return `<img class="${cls}" src="${esc(urls[0])}" width="${size}" height="${size}" alt="${esc(jaName)}" title="${esc(jaName)}" loading="${forCapture ? "eager" : "lazy"}" decoding="async" referrerpolicy="no-referrer"${cors} data-urls="${dataUrls}" data-i="0" onerror="(function(el){var u=[];try{u=JSON.parse(el.getAttribute('data-urls')||'[]')}catch(e){}var i=(+el.dataset.i||0)+1;if(i<u.length){el.dataset.i=i;el.src=u[i];}else{el.style.opacity='0.35';el.removeAttribute('onerror');}})(this)" />`;
 }

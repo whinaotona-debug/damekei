@@ -1,9 +1,9 @@
-/**
+﻿/**
  * 構築共有コード（数字のみ）
  * 別端末で入力 → 同じ構築を取り込んで再編集
  */
 import { NATURES, STAT_KEYS, emptyEvs } from "./stats.js?v=20260920k";
-import { emptyMember, uid } from "./team-store.js?v=20260920k";
+import { emptyMember, uid } from "./team-store.js?v=20260922c";
 
 const VERSION = 1;
 

@@ -237,20 +237,47 @@ export function getActiveTeam() {
   return loadTeams()[getActiveSlot()];
 }
 
+export function detectUiMode() {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+    return "phone";
+  }
+  return window.matchMedia("(min-width: 768px)").matches ? "ipad" : "phone";
+}
+
 export function getUiMode() {
-  const m = localStorage.getItem(UI_MODE_KEY);
-  return m === "ipad" ? "ipad" : "phone";
+  return detectUiMode();
 }
 
 export function setUiMode(mode) {
-  const m = mode === "ipad" ? "ipad" : "phone";
-  localStorage.setItem(UI_MODE_KEY, m);
-  document.documentElement.dataset.ui = m;
-  return m;
+  // 互換API: 手動指定はせず、常に画面幅に合わせる
+  return applyUiMode();
 }
 
 export function applyUiMode() {
-  document.documentElement.dataset.ui = getUiMode();
+  const mode = detectUiMode();
+  document.documentElement.dataset.ui = mode;
+  if (typeof window !== "undefined" && !window.__damekeiUiWired) {
+    window.__damekeiUiWired = true;
+    let timer = 0;
+    const onChange = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        document.documentElement.dataset.ui = detectUiMode();
+      }, 80);
+    };
+    window.addEventListener("resize", onChange);
+    try {
+      window.matchMedia("(min-width: 768px)").addEventListener("change", onChange);
+    } catch {
+      /* older browsers */
+    }
+  }
+  return mode;
+}
+
+/** @deprecated wireUiModeToggle を使う */
+export function wireResponsiveUi() {
+  return applyUiMode();
 }
 
 export function isMegaName(name) {

@@ -587,10 +587,15 @@ export function calculateDamage(input) {
     );
   }
 
-  const hasSturdy =
+  const hasSturdyAbility =
     defenderAbility === "がんじょう" && !ignoresAbility(attackerAbility) && !hpNotFull;
-  if (hasSturdy) {
+  const hasFocusSash = defenderItem === "きあいのタスキ" && !hpNotFull;
+  const hasSturdy = hasSturdyAbility || hasFocusSash;
+  if (hasSturdyAbility) {
     details.push("防御側 がんじょう: HP満タンからのひんし技をHP1で耐える（1回）");
+  }
+  if (hasFocusSash) {
+    details.push("防御側 きあいのタスキ: HP満タンからのひんし技をHP1で耐える（1回）");
   }
 
   const atkWeather = effectiveWeatherForAttacker(weather, attackerAbility);
@@ -687,7 +692,7 @@ export function calculateDamage(input) {
     const notes = [...defMod.notes, ...atkMod.notes];
     if (sturdyActive && damage >= defStats.hp) {
       damage = defStats.hp - 1;
-      notes.push("がんじょう: HP1で耐えた");
+      notes.push(hasFocusSash && !hasSturdyAbility ? "きあいのタスキ: HP1で耐えた" : "がんじょう: HP1で耐えた");
     }
     return { damage, a, d, atkName, defName, stab, notes, blocked: false, berryUsed };
   }

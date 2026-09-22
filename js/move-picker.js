@@ -1,8 +1,8 @@
-/**
+﻿/**
  * 技ピッカー: タイプ順＋物理/特殊/変化フィルタ
  */
 import { TYPES } from "./types.js?v=20260920h";
-import { $, textMatchesQuery, openModal, closeModal } from "./common.js?v=20260920h";
+import { $, textMatchesQuery, openModal, closeModal } from "./common.js?v=20260922c";
 import { typeIconHtml } from "./media.js?v=20260920m";
 
 const TYPE_ORDER = new Map(TYPES.map((t, i) => [t, i]));

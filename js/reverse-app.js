@@ -1,4 +1,4 @@
-import {
+﻿import {
   emptyEvs,
   emptyRanks,
   STAT_LABELS,
@@ -9,7 +9,7 @@ import {
   getActiveSlot,
   setActiveSlot,
   applyUiMode,
-} from "./team-store.js?v=20260920h";
+} from "./team-store.js?v=20260922c";
 import {
   $,
   textMatchesQuery,
@@ -18,7 +18,7 @@ import {
   loadGameData,
   wireModalClose,
   wireUiModeToggle,
-} from "./common.js?v=20260920h";
+} from "./common.js?v=20260922c";
 import { typeIconHtml, pokeImgHtml } from "./media.js?v=20260920m";
 import { openMovePickerList } from "./move-picker.js?v=20260920h";
 import {

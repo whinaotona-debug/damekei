@@ -1,5 +1,27 @@
-/* スマホ / iPad UI サイズ */
-:root,
+/* スマホ / タブレット UI サイズ（幅で自動） */
+:root {
+  --ui-pad: 10px;
+  --ui-gap: 8px;
+  --ui-tap: 42px;
+  --ui-title: 1.1rem;
+  --ui-body: 0.92rem;
+  --ui-small: 0.75rem;
+  --ui-memo-min: 140px;
+  --ui-max: 720px;
+}
+@media (min-width: 768px) {
+  :root {
+    --ui-pad: 16px;
+    --ui-gap: 12px;
+    --ui-tap: 48px;
+    --ui-title: 1.35rem;
+    --ui-body: 1.05rem;
+    --ui-small: 0.85rem;
+    --ui-memo-min: 200px;
+    --ui-max: 1100px;
+  }
+}
+/* JS 連動の互換（自動設定された data-ui） */
 html[data-ui="phone"] {
   --ui-pad: 10px;
   --ui-gap: 8px;
@@ -66,8 +88,7 @@ body.tools-page select {
   margin-left: auto;
   align-items: center;
 }
-.hub-nav a,
-.ui-toggle button {
+.hub-nav a {
   text-decoration: none;
   color: var(--ink);
   background: #fff;
@@ -79,15 +100,10 @@ body.tools-page select {
   font-weight: 700;
   cursor: pointer;
 }
-.hub-nav a[aria-current="page"],
-.ui-toggle button.active {
+.hub-nav a[aria-current="page"] {
   background: var(--accent);
   color: #fff;
   border-color: var(--accent);
-}
-.ui-toggle {
-  display: flex;
-  gap: 4px;
 }
 
 .slot-tabs {
@@ -167,6 +183,11 @@ body.tools-page select {
   display: grid;
   grid-template-columns: 1fr;
   gap: 10px;
+}
+@media (min-width: 768px) {
+  .member-grid {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 html[data-ui="ipad"] .member-grid {
   grid-template-columns: 1fr 1fr;
@@ -414,11 +435,6 @@ html[data-ui="ipad"] .member-grid {
   align-items: center;
 }
 
-.member-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 10px;
-}
 .toast {
   position: fixed;
   bottom: 24px;
@@ -434,6 +450,12 @@ html[data-ui="ipad"] .member-grid {
 .calc-layout {
   display: grid;
   gap: 10px;
+}
+@media (min-width: 768px) {
+  .calc-layout {
+    grid-template-columns: minmax(280px, 380px) 1fr;
+    align-items: start;
+  }
 }
 html[data-ui="ipad"] .calc-layout {
   grid-template-columns: minmax(280px, 380px) 1fr;
@@ -515,6 +537,65 @@ html[data-ui="ipad"] .calc-layout {
 .bulk-card.tone-warn .dmg { color: var(--warn); }
 .bulk-card.tone-bad .dmg { color: var(--bad); }
 
+.atk-summary { display: grid; gap: 8px; }
+.atk-summary-main {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.team-moves-quick {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.move-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  font-size: 0.85rem;
+  text-align: left;
+  min-height: var(--ui-tap);
+}
+.move-chip.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.move-chip.empty { opacity: 0.45; }
+.foe-slot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.item-pick-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.result-main .result-details {
+  margin: 8px 0 0;
+  padding-left: 1.1em;
+  font-size: 0.75rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+.rev-mine-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.rev-mine-text .s {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
 /* —— 構築概要 —— */
 .overview-wrap {
   overflow: auto;
@@ -530,8 +611,10 @@ html[data-ui="ipad"] .calc-layout {
   background: linear-gradient(160deg, #152238, #1c3350 50%, #243b58);
   color: #e8eef8;
   border-radius: 14px;
-  padding: 16px;
+  padding: 20px 24px 24px;
   min-width: 320px;
+  box-sizing: border-box;
+  overflow: visible;
 }
 .overview-head {
   display: flex;
@@ -567,7 +650,7 @@ html[data-ui="ipad"] .calc-layout {
   border: 1px solid rgba(120, 170, 220, 0.35);
   border-radius: 12px;
   padding: 10px 12px;
-  overflow: hidden;
+  overflow: visible;
   min-height: 118px;
 }
 .ov-card.empty {
@@ -587,11 +670,15 @@ html[data-ui="ipad"] .calc-layout {
 }
 .ov-main {
   display: grid;
-  grid-template-columns: 1.1fr auto 1fr;
-  gap: 8px;
+  grid-template-columns: minmax(0, 1.15fr) auto minmax(0, 1.1fr);
+  gap: 10px;
   align-items: start;
   position: relative;
   z-index: 1;
+}
+.ov-left {
+  min-width: 0;
+  overflow: visible;
 }
 .ov-name {
   font-weight: 800;
@@ -819,6 +906,14 @@ html[data-ui="ipad"] .home-tile {
 html[data-ui="ipad"] .home-tile-t {
   font-size: 1.35rem;
 }
+@media (min-width: 768px) {
+  .home-tile {
+    min-height: 110px;
+  }
+  .home-tile-t {
+    font-size: 1.35rem;
+  }
+}
 
 .chart-block {
   margin-top: 14px;
@@ -881,6 +976,76 @@ html[data-ui="ipad"] .home-tile-t {
   align-items: center;
   gap: 6px;
   padding-top: 4px;
+}
+
+/* スマホ: 構築概要を縦積みで読みやすく（最後に置き上書きを確実に） */
+@media (max-width: 699px) {
+  .overview-wrap {
+    max-height: none;
+  }
+  .overview-sheet {
+    padding: 14px 12px 18px;
+    min-width: 0;
+    border-radius: 10px;
+  }
+  .overview-title {
+    font-size: 1.45rem;
+  }
+  .overview-sub {
+    font-size: 0.8rem;
+  }
+  .overview-grid {
+    gap: 14px;
+  }
+  .ov-card {
+    min-height: 0;
+    padding: 14px 12px;
+  }
+  .ov-main {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .ov-sprite-wrap {
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    padding-top: 0;
+  }
+  .ov-sprite-wrap .poke-img {
+    width: 80px;
+    height: 80px;
+  }
+  .ov-name {
+    font-size: 1.22rem;
+  }
+  .ov-meta {
+    font-size: 0.9rem;
+    line-height: 1.45;
+  }
+  .ov-stats {
+    margin-top: 6px;
+    font-size: 0.88rem;
+    letter-spacing: 0.01em;
+  }
+  .ov-moves {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .ov-move {
+    font-size: 0.95rem;
+    gap: 8px;
+    padding: 4px 0;
+  }
+  .ov-item-row {
+    gap: 8px;
+  }
+  .ov-item-row .item-img {
+    width: 28px;
+    height: 28px;
+  }
 }
 
 /* 逆算結果カード */
