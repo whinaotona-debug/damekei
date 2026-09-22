@@ -1,7 +1,7 @@
 /**
  * タイプアイコン・ポケモン/持ち物スプライト
  */
-import mediaIds from "./media-ids.js?v=20260922a";
+import mediaIds from "./media-ids.js?v=20260922d";
 
 const ITEM_SPRITE = "https://play.pokemonshowdown.com/sprites/itemicons";
 const ITEM_POKEAPI = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items";
@@ -219,11 +219,42 @@ function itemHyphenId(id) {
   return id;
 }
 
+/** Showdown / pokesprite 用の ID 候補（XYは -megax、-mega-x の両方が必要） */
+function spriteIdCandidates(id) {
+  if (!id) return [];
+  const out = [];
+  const add = (x) => {
+    if (x && !out.includes(x)) out.push(x);
+  };
+  if (id.includes("-")) {
+    add(id);
+    add(id.replace(/-/g, ""));
+    // raichu-mega-x → raichu-megax も試す
+    add(id.replace(/-mega-([xyz])$/i, "-mega$1"));
+  } else {
+    // Showdown本流を先に（dragonite-mega / charizard-megax）
+    add(
+      id
+        .replace(/megaz$/, "-megaz")
+        .replace(/megax$/, "-megax")
+        .replace(/megay$/, "-megay")
+        .replace(/mega$/, "-mega")
+    );
+    add(toHyphenSpriteId(id));
+    add(id);
+  }
+  return out;
+}
+
 /** Showdown id → pokesprite 風ハイフン名 */
 function toHyphenSpriteId(id) {
   let s = String(id || "");
   if (s.includes("-")) return s;
-  s = s.replace(/megaz$/, "-mega-z").replace(/megax$/, "-mega-x").replace(/megay$/, "-mega-y").replace(/mega$/, "-mega");
+  s = s
+    .replace(/megaz$/, "-mega-z")
+    .replace(/megax$/, "-mega-x")
+    .replace(/megay$/, "-mega-y")
+    .replace(/mega$/, "-mega");
   s = s
     .replace(/alola$/, "-alola")
     .replace(/galar$/, "-galar")
@@ -240,27 +271,78 @@ function isMegaJa(jaName) {
   return !!(jaName && jaName.startsWith("メガ") && jaName !== "メガニウム");
 }
 
+/** メガの元ポケモン名（スプライト欠落時のフォールバック用） */
+function megaBaseJaName(jaName) {
+  if (!isMegaJa(jaName)) return "";
+  let s = jaName.replace(/^メガ/, "").replace(/[XYZ]$/u, "");
+  if (mediaIds.pokemon?.[s] || POKE_ALIAS[s]) return s;
+  const bare = s.replace(/\(.*?\)\s*$/u, "");
+  if (bare !== s && (mediaIds.pokemon?.[bare] || POKE_ALIAS[bare])) return bare;
+  for (const suf of ["(オス)", "(メス)", "(オスのすがた)", "(メスのすがた)"]) {
+    const cand = bare + suf;
+    if (mediaIds.pokemon?.[cand] || POKE_ALIAS[cand]) return cand;
+  }
+  return bare || s;
+}
+
+function corsProxyUrl(url) {
+  if (!url || url.startsWith("data:") || url.startsWith("blob:") || url.startsWith("./") || url.startsWith("sprites/")) {
+    return "";
+  }
+  const stripped = url.replace(/^https?:\/\//, "");
+  return `https://images.weserv.nl/?url=${encodeURIComponent(stripped)}`;
+}
+
+function pushShowdownUrls(urls, id, { withProxy = false } = {}) {
+  const cands = spriteIdCandidates(id);
+  for (const sid of cands) {
+    for (const path of ["gen5", "dex", "home-centered"]) {
+      const u = `https://play.pokemonshowdown.com/sprites/${path}/${sid}.png`;
+      urls.push(u);
+      if (withProxy) {
+        const p = corsProxyUrl(u);
+        if (p) urls.push(p);
+      }
+    }
+  }
+  const hy = toHyphenSpriteId(id);
+  if (hy) {
+    const ani = `https://play.pokemonshowdown.com/sprites/ani/${hy}.gif`;
+    urls.push(ani);
+    if (withProxy) {
+      const p = corsProxyUrl(ani);
+      if (p) urls.push(p);
+    }
+    urls.push(`https://raw.githubusercontent.com/msikma/pokesprite/master/pokemon-gen8/regular/${hy}.png`);
+  }
+}
+
 /** 複数CDNを順に試す（メガは図鑑番号フォールバックしない＝通常姿にならない） */
 export function pokeSpriteUrls(jaName, dex) {
   const id = pokeSpriteId(jaName);
   const mega = isMegaJa(jaName);
   const urls = [];
-  const hy = id ? toHyphenSpriteId(id) : "";
-  const local = (id && LOCAL_SPRITE_BY_ID[id]) || (hy && LOCAL_SPRITE_BY_ID[hy]);
+  const cands = spriteIdCandidates(id);
+  const local =
+    (id && LOCAL_SPRITE_BY_ID[id]) ||
+    cands.map((c) => LOCAL_SPRITE_BY_ID[c]).find(Boolean);
   if (local) urls.push(local);
-  if (id) {
-    const showdownIds = hy && hy !== id ? [hy, id] : [id];
-    for (const sid of showdownIds) {
-      urls.push(`https://play.pokemonshowdown.com/sprites/home-centered/${sid}.png`);
-      urls.push(`https://play.pokemonshowdown.com/sprites/dex/${sid}.png`);
-      urls.push(`https://play.pokemonshowdown.com/sprites/gen5/${sid}.png`);
+  if (id) pushShowdownUrls(urls, id, { withProxy: false });
+  // Champions専用などでメガ画像が無い場合は元ポケモンを最後に
+  if (mega) {
+    const base = megaBaseJaName(jaName);
+    if (base && base !== jaName) {
+      const baseId = pokeSpriteId(base);
+      if (baseId) pushShowdownUrls(urls, baseId, { withProxy: false });
+      if (Number(dex) > 0) {
+        const n = Number(dex);
+        urls.push(
+          `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${n}.png`
+        );
+        urls.push(`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${n}.png`);
+      }
     }
-    if (hy) {
-      urls.push(`https://raw.githubusercontent.com/msikma/pokesprite/master/pokemon-gen8/regular/${hy}.png`);
-      if (mega) urls.push(`https://play.pokemonshowdown.com/sprites/ani/${hy}.gif`);
-    }
-  }
-  if (!mega && dex && Number(dex) > 0) {
+  } else if (dex && Number(dex) > 0) {
     const n = Number(dex);
     urls.push(`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${n}.png`);
     urls.push(`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${n}.png`);
@@ -273,26 +355,31 @@ export function pokeSpriteUrlsForCapture(jaName, dex) {
   const id = pokeSpriteId(jaName);
   const mega = isMegaJa(jaName);
   const urls = [];
-  const hy = id ? toHyphenSpriteId(id) : "";
-  const local = (id && LOCAL_SPRITE_BY_ID[id]) || (hy && LOCAL_SPRITE_BY_ID[hy]);
+  const cands = spriteIdCandidates(id);
+  const local =
+    (id && LOCAL_SPRITE_BY_ID[id]) ||
+    cands.map((c) => LOCAL_SPRITE_BY_ID[c]).find(Boolean);
   if (local) urls.push(local);
-  if (!mega && dex && Number(dex) > 0) {
-    const n = Number(dex);
-    urls.push(`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${n}.png`);
-    urls.push(`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${n}.png`);
-  }
-  if (hy) {
-    urls.push(`https://raw.githubusercontent.com/msikma/pokesprite/master/pokemon-gen8/regular/${hy}.png`);
-  }
-  if (id) {
-    const showdownIds = hy && hy !== id ? [hy, id] : [id];
-    for (const sid of showdownIds) {
-      urls.push(`https://play.pokemonshowdown.com/sprites/home-centered/${sid}.png`);
-      urls.push(`https://play.pokemonshowdown.com/sprites/dex/${sid}.png`);
-      urls.push(`https://play.pokemonshowdown.com/sprites/gen5/${sid}.png`);
+  if (id) pushShowdownUrls(urls, id, { withProxy: true });
+  if (mega) {
+    const base = megaBaseJaName(jaName);
+    if (base && base !== jaName) {
+      const baseId = pokeSpriteId(base);
+      if (baseId) pushShowdownUrls(urls, baseId, { withProxy: true });
+      if (Number(dex) > 0) {
+        const n = Number(dex);
+        const a = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${n}.png`;
+        const b = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${n}.png`;
+        urls.push(a, b, corsProxyUrl(a), corsProxyUrl(b));
+      }
     }
+  } else if (dex && Number(dex) > 0) {
+    const n = Number(dex);
+    const a = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${n}.png`;
+    const b = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${n}.png`;
+    urls.push(a, b, corsProxyUrl(a), corsProxyUrl(b));
   }
-  return [...new Set(urls)];
+  return [...new Set(urls.filter(Boolean))];
 }
 
 export function itemSpriteUrls(jaName) {

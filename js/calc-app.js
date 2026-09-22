@@ -1,4 +1,4 @@
-﻿import {
+import {
   NATURE_TABLE,
   NATURE_STAT_ORDER,
   NEUTRAL_NATURES,
@@ -31,7 +31,7 @@ import {
   wireModalClose,
   wireUiModeToggle,
 } from "./common.js?v=20260922c";
-import { typeIconHtml, pokeImgHtml, itemImgHtml } from "./media.js?v=20260922a";
+import { typeIconHtml, pokeImgHtml, itemImgHtml } from "./media.js?v=20260922d";
 import { openMovePickerList } from "./move-picker.js?v=20260922a";
 
 const state = {

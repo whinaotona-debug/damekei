@@ -13,7 +13,7 @@ import {
   loadGameData,
   wireUiModeToggle,
 } from "./common.js?v=20260922c";
-import { pokeImgHtml, itemImgHtml, typeIconHtml } from "./media.js?v=20260922c";
+import { pokeImgHtml, itemImgHtml, typeIconHtml } from "./media.js?v=20260922d";
 import { createBattleState, hpRatio, activeOf, livingIndices, takeEvents } from "./battle/state.js?v=20260922f";
 import {
   resolveTurn,

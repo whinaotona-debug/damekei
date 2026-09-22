@@ -2,7 +2,7 @@
  * 構築概要カード描画 & PNG保存（可能ならアルバム共有）
  */
 import { calcAllStats, emptyEvs, STAT_LABELS, STAT_KEYS } from "./stats.js?v=20260920h";
-import { typeIconHtml, pokeImgHtml, itemImgHtml } from "./media.js?v=20260922a";
+import { typeIconHtml, pokeImgHtml, itemImgHtml } from "./media.js?v=20260922d";
 
 function esc(s) {
   return String(s || "")
@@ -46,13 +46,13 @@ export function buildOverviewHtml(team, pokeByName, moveByName) {
           <div class="ov-left">
             <div class="ov-name">${esc(poke.name)}</div>
             <div class="ov-meta">${esc(m.ability || "—")}</div>
-            <div class="ov-meta ov-item-row">${itemImgHtml(m.item, { size: 28, forCapture: true })}<span>${esc(m.item || "なし")}</span></div>
+            <div class="ov-meta ov-item-row">${itemImgHtml(m.item, { size: 28 })}<span>${esc(m.item || "なし")}</span></div>
             <div class="ov-meta muted">${esc(m.nature)}　${esc(evShort(m.evs))}</div>
             <div class="ov-stats">H${stats.hp} A${stats.atk} B${stats.def} C${stats.spa} D${stats.spd} S${stats.spe}</div>
           </div>
           <div class="ov-sprite-wrap">
             <div class="ov-types">${types.map((t) => typeIconHtml(t, { size: "md" })).join("")}</div>
-            ${pokeImgHtml(poke.name, { size: 104, dex: poke.dex, round: true, forCapture: true })}
+            ${pokeImgHtml(poke.name, { size: 104, dex: poke.dex, round: true })}
           </div>
           <div class="ov-moves">
             ${[0, 1, 2, 3].map((mi) => moveRow(m.moves?.[mi], moveByName)).join("")}
@@ -113,12 +113,24 @@ async function inlineImage(img) {
   if (img.currentSrc) candidates.unshift(img.currentSrc);
   else if (img.src) candidates.unshift(img.src);
 
-  const tried = new Set();
+  // Showdown 等は CORS 無しなので weserv 経由も試す
+  const expanded = [];
   for (const url of candidates) {
+    if (!url) continue;
+    expanded.push(url);
+    if (/^https?:\/\/play\.pokemonshowdown\.com\//i.test(url)) {
+      const stripped = url.replace(/^https?:\/\//, "");
+      expanded.push(`https://images.weserv.nl/?url=${encodeURIComponent(stripped)}`);
+    }
+  }
+
+  const tried = new Set();
+  for (const url of expanded) {
     if (!url || tried.has(url)) continue;
     tried.add(url);
     try {
       if (url.startsWith("data:") || url.startsWith("blob:") || url.startsWith("./") || url.startsWith("sprites/")) {
+        img.removeAttribute("crossorigin");
         img.src = url;
         await waitForImg(img, 4000);
         if (img.naturalWidth > 0) return true;
