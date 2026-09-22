@@ -21,7 +21,7 @@ import {
   forcePlayerSwitch,
   completePivotSwitch,
   completeForceSwitch,
-} from "./battle/engine.js?v=20260922g";
+} from "./battle/engine.js?v=20260922j";
 import { generateFoeTeam, selectFoeThree } from "./battle/ai-team.js?v=20260922g";
 import { onSwitchIn } from "./battle/hooks.js?v=20260922f";
 import { fieldSummary, hazardsSummary } from "./battle/field.js?v=20260922f";

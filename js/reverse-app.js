@@ -2,8 +2,8 @@
   emptyEvs,
   emptyRanks,
   STAT_LABELS,
-} from "./stats.js?v=20260920h";
-import { TYPES } from "./types.js?v=20260920h";
+} from "./stats.js?v=20260922i";
+import { TYPES } from "./types.js?v=20260922a";
 import {
   loadTeams,
   getActiveSlot,
@@ -19,13 +19,13 @@ import {
   wireModalClose,
   wireUiModeToggle,
 } from "./common.js?v=20260922c";
-import { typeIconHtml, pokeImgHtml } from "./media.js?v=20260920m";
-import { openMovePickerList } from "./move-picker.js?v=20260920h";
+import { typeIconHtml, pokeImgHtml } from "./media.js?v=20260922d";
+import { openMovePickerList } from "./move-picker.js?v=20260922a";
 import {
   reverseOffense,
   reverseDefense,
   parseObservedDamage,
-} from "./reverse.js?v=20260920h";
+} from "./reverse.js?v=20260922j";
 
 const state = {
   pokemon: [],
@@ -37,6 +37,9 @@ const state = {
   myIndex: 0,
   foe: null,
   move: null,
+  category: "物理",
+  atkRank: 0,
+  defRank: 0,
   foeItem: "なし",
   foeAbility: "",
 };
@@ -51,10 +54,12 @@ function learnable(name) {
   return state.learnsets[name] || [];
 }
 function team() {
-  return state.teams[state.slot];
+  return state.teams[state.slot] || state.teams[0] || null;
 }
 function myMember() {
-  return team().members[state.myIndex];
+  const t = team();
+  if (!t?.members?.length) return null;
+  return t.members[state.myIndex] || null;
 }
 
 function renderTeamSlot() {
@@ -69,6 +74,10 @@ function renderTeamSlot() {
 
 function renderMyPick() {
   const t = team();
+  if (!t) {
+    $("my-pick").innerHTML = `<p class="hint">構築がありません</p>`;
+    return;
+  }
   $("my-pick").innerHTML = t.members
     .map((m, i) => {
       if (!m.species) {
@@ -77,7 +86,7 @@ function renderMyPick() {
       const poke = pokeByName(m.species);
       return `<button type="button" class="rev-mine ${i === state.myIndex ? "active" : ""}" data-mine="${i}">
         ${pokeImgHtml(m.species, { size: 40, dex: poke?.dex, round: true })}
-        <span>${m.species}</span>
+        <span class="rev-mine-text"><strong>${m.species}</strong></span>
       </button>`;
     })
     .join("");
@@ -123,6 +132,58 @@ function renderMove() {
   }
 }
 
+function catNow() {
+  return $("rev-cat")?.value === "特殊" ? "特殊" : "物理";
+}
+
+function rankMeta() {
+  const phys = catNow() === "物理";
+  const mode = $("rev-mode")?.value || "offense";
+  return {
+    atkStat: phys ? "atk" : "spa",
+    defStat: phys ? "def" : "spd",
+    atkName: phys ? "攻撃" : "特攻",
+    defName: phys ? "防御" : "特防",
+    atkWho: mode === "defense" ? "自分" : "相手",
+    defWho: mode === "defense" ? "相手" : "自分",
+  };
+}
+
+function renderRanks() {
+  const box = $("rev-ranks");
+  if (!box) return;
+  const m = rankMeta();
+  const row = (who, name, key, val) => `
+    <div class="field-label">${who}の${name}ランク</div>
+    <div class="rank-group">
+      <button type="button" class="rank-btn" data-rev-rank="${key}" data-rank-delta="-1" aria-label="下げる">−</button>
+      <span class="rank-val ${val > 0 ? "up" : val < 0 ? "down" : ""}">${val > 0 ? `+${val}` : String(val)}</span>
+      <button type="button" class="rank-btn" data-rev-rank="${key}" data-rank-delta="1" aria-label="上げる">＋</button>
+    </div>`;
+  box.innerHTML = `<div class="field-row">
+    <div>${row(m.atkWho, m.atkName, "atk", state.atkRank)}</div>
+    <div>${row(m.defWho, m.defName, "def", state.defRank)}</div>
+  </div>`;
+  const hint = $("rev-stat-hint");
+  if (hint) {
+    hint.textContent =
+      catNow() === "物理"
+        ? "物理技 → 殴った側は攻撃の努力値、受け側は防御の努力値"
+        : "特殊技 → 殴った側は特攻の努力値、受け側は特防の努力値";
+  }
+  box.querySelectorAll("[data-rev-rank]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const delta = Number(btn.dataset.rankDelta) || 0;
+      if (btn.dataset.revRank === "atk") {
+        state.atkRank = Math.max(-6, Math.min(6, state.atkRank + delta));
+      } else {
+        state.defRank = Math.max(-6, Math.min(6, state.defRank + delta));
+      }
+      renderRanks();
+    });
+  });
+}
+
 function fieldOpts() {
   return {
     weather: $("weather")?.value || "なし",
@@ -166,6 +227,12 @@ function runReverse() {
     return;
   }
 
+  const meta = rankMeta();
+  const attackerRanks = emptyRanks();
+  const defenderRanks = emptyRanks();
+  attackerRanks[meta.atkStat] = state.atkRank;
+  defenderRanks[meta.defStat] = state.defRank;
+
   const opts = {
     myPoke,
     myMember: m,
@@ -174,6 +241,9 @@ function runReverse() {
     observed,
     foeItem: state.foeItem,
     foeAbility: state.foeAbility,
+    category: catNow(),
+    attackerRanks,
+    defenderRanks,
     ...fieldOpts(),
   };
 
@@ -185,12 +255,12 @@ function runReverse() {
 
   const title =
     mode === "defense"
-      ? "自分が殴った → 相手の耐久"
-      : "相手に殴られた → 相手の火力";
+      ? `自分が殴った → 相手のHPと${meta.defName}`
+      : `相手に殴られた → 相手の${meta.atkName}`;
 
   out.innerHTML = `
     <h3 class="rev-result-title">${title}</h3>
-    <p class="hint">観測 ${observed.minDmg === observed.maxDmg ? observed.minDmg : `${observed.minDmg}〜${observed.maxDmg}`}　／　乱数16通りに含まれる配分を集計</p>
+    <p class="hint">観測 ${observed.minDmg === observed.maxDmg ? observed.minDmg : `${observed.minDmg}〜${observed.maxDmg}`}　／　生ダメージ・回復差し引き表示のどちらでも照合</p>
     <div class="rev-cards">
       ${rows
         .map(
@@ -261,15 +331,24 @@ function openItemPicker() {
 function openMovePicker() {
   const mode = $("rev-mode")?.value || "offense";
   const species = mode === "defense" ? myMember()?.species : state.foe?.name;
+  if (!species) {
+    alert(mode === "defense" ? "先に自分のポケモンを選んでください" : "先に相手ポケモンを選んでください");
+    return;
+  }
   openMovePickerList({
     title: "技",
     moves: state.moves,
     learnsets: state.learnsets,
-    species: species || "",
+    species,
     allowStatus: false,
     onPick: (mv) => {
       state.move = mv;
+      if (mv.category === "物理" || mv.category === "特殊") {
+        state.category = mv.category;
+        if ($("rev-cat")) $("rev-cat").value = mv.category;
+      }
       renderMove();
+      renderRanks();
     },
   });
 }
@@ -281,11 +360,13 @@ function wire() {
   renderMyPick();
   renderFoe();
   renderMove();
+  renderRanks();
 
   $("team-slot").addEventListener("change", () => {
     state.slot = setActiveSlot(Number($("team-slot").value));
     state.teams = loadTeams();
-    state.myIndex = team().members.findIndex((m) => m.species);
+    const t = team();
+    state.myIndex = t?.members?.findIndex((m) => m.species) ?? 0;
     if (state.myIndex < 0) state.myIndex = 0;
     renderMyPick();
   });
@@ -302,6 +383,11 @@ function wire() {
   $("rev-mode").addEventListener("change", () => {
     state.move = null;
     renderMove();
+    renderRanks();
+  });
+  $("rev-cat")?.addEventListener("change", () => {
+    state.category = catNow();
+    renderRanks();
   });
   $("observed-dmg").addEventListener("keydown", (e) => {
     if (e.key === "Enter") runReverse();
@@ -314,10 +400,9 @@ async function main() {
   Object.assign(state, data);
   state.teams = loadTeams();
   state.slot = getActiveSlot();
-  state.myIndex = Math.max(
-    0,
-    team().members.findIndex((m) => m.species)
-  );
+  const t = team();
+  const idx = t?.members?.findIndex((m) => m.species) ?? 0;
+  state.myIndex = Math.max(0, idx);
   wire();
 }
 

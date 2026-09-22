@@ -6,12 +6,12 @@
   <meta name="theme-color" content="#1a2b33" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta http-equiv="Cache-Control" content="no-cache" />
-  <title>ダメ計 | 構築から攻撃</title>
+  <title>ダメ計 | 攻撃・受け両対応</title>
   <link rel="icon" type="image/png" href="./icons/icon.png" />
   <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
-  <link rel="stylesheet" href="./css/style.css?v=20260922h" />
-  <link rel="stylesheet" href="./css/hub.css?v=20260922h" />
-  <link rel="stylesheet" href="./css/type-icons.css?v=20260922h" />
+  <link rel="stylesheet" href="./css/style.css?v=20260922i" />
+  <link rel="stylesheet" href="./css/hub.css?v=20260922i" />
+  <link rel="stylesheet" href="./css/type-icons.css?v=20260922i" />
 </head>
 <body class="tools-page calc-page">
   <div class="hub-app">
@@ -21,7 +21,7 @@
       </a>
       <div class="titles">
         <h1>ダメ計</h1>
-        <p>構築1匹 → 相手へ攻撃</p>
+        <p>構築を攻撃側にも受け側にも置ける</p>
       </div>
       <nav class="hub-nav">
         <a href="./index.html" class="nav-home">ホーム</a>
@@ -33,9 +33,14 @@
     <div class="calc-layout">
       <div class="calc-main">
         <div class="team-toolbar">
-          <label class="field-label" for="team-slot">攻撃側の構築</label>
+          <label class="field-label" for="team-slot">自分の構築</label>
           <select id="team-slot" aria-label="構築選択"></select>
           <button type="button" class="icon-btn" id="btn-edit-team">構築を編集</button>
+        </div>
+
+        <div class="role-tabs" role="tablist" aria-label="構築の役割">
+          <button type="button" class="role-tab on" data-role="atk" aria-selected="true">構築が攻撃</button>
+          <button type="button" class="role-tab" data-role="def" aria-selected="false">構築が受け</button>
         </div>
 
         <section class="calc-panel">
@@ -46,7 +51,7 @@
 
           <div id="side-atk" class="side-pane">
             <h2 class="sr-only">攻撃側</h2>
-            <div class="rev-mine-grid" id="my-pick"></div>
+            <div id="atk-pick"></div>
             <div id="atk-detail" class="poke-detail"></div>
             <div class="mid-row">
               <button type="button" class="selector-btn" id="move-btn">
@@ -58,8 +63,8 @@
 
           <div id="side-def" class="side-pane" hidden>
             <h2 class="sr-only">防御側</h2>
-            <div class="poke-slot foe-slot" id="foe-slot" tabindex="0" role="button">相手を選ぶ</div>
-            <div id="foe-detail" class="poke-detail" hidden></div>
+            <div id="def-pick"></div>
+            <div id="def-detail" class="poke-detail"></div>
           </div>
         </section>
 
@@ -132,6 +137,6 @@
     </div>
   </div>
 
-  <script type="module" src="./js/calc-app.js?v=20260922h"></script>
+  <script type="module" src="./js/calc-app.js?v=20260922j"></script>
 </body>
 </html>

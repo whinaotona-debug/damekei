@@ -7,9 +7,9 @@
   <title>努力値逆算 | ダメ計</title>
   <link rel="icon" type="image/png" href="./icons/icon.png" />
   <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
-  <link rel="stylesheet" href="./css/style.css?v=20260922c" />
-  <link rel="stylesheet" href="./css/hub.css?v=20260922c" />
-  <link rel="stylesheet" href="./css/type-icons.css?v=20260922c" />
+  <link rel="stylesheet" href="./css/style.css?v=20260922i" />
+  <link rel="stylesheet" href="./css/hub.css?v=20260922i" />
+  <link rel="stylesheet" href="./css/type-icons.css?v=20260922i" />
 </head>
 <body class="tools-page">
   <div class="hub-app">
@@ -39,19 +39,26 @@
       <h2>2. 向き・相手・技</h2>
       <label class="field-label" for="rev-mode">逆算の向き</label>
       <select id="rev-mode">
-        <option value="offense">相手に殴られた → 相手の A/C</option>
-        <option value="defense">自分が殴った → 相手の H+B/D</option>
+        <option value="offense">相手に殴られた → 相手の攻撃側努力値</option>
+        <option value="defense">自分が殴った → 相手の耐久努力値</option>
       </select>
       <div id="foe-slot" style="margin-top:8px"></div>
       <button type="button" class="selector-btn" id="btn-move" style="margin-top:8px;width:100%">
         <div class="k">技</div>
         <div class="title">技を選択</div>
       </button>
+      <label class="field-label" for="rev-cat" style="margin-top:8px">分類</label>
+      <select id="rev-cat">
+        <option value="物理">物理（攻撃 ↔ 防御）</option>
+        <option value="特殊">特殊（特攻 ↔ 特防）</option>
+      </select>
+      <p class="hint" id="rev-stat-hint">物理技は攻撃と防御、特殊技は特攻と特防の努力値を出す</p>
+      <div id="rev-ranks" style="margin-top:8px"></div>
     </section>
 
     <section class="calc-attacker" style="margin-top:10px">
       <h2>3. 観測ダメージ・条件</h2>
-      <label class="field-label" for="observed-dmg">観測ダメージ（例: 72　または　68-80）</label>
+      <label class="field-label" for="observed-dmg">観測ダメージ（生の削り／ダメ計表示どちらでも可　例: 72　または　68-80）</label>
       <input type="text" id="observed-dmg" inputmode="numeric" placeholder="72" style="width:100%;min-height:44px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-size:1.1rem;font-weight:800" />
 
       <div class="field-compact">
@@ -106,6 +113,6 @@
     </div>
   </div>
 
-  <script type="module" src="./js/reverse-app.js?v=20260920h"></script>
+  <script type="module" src="./js/reverse-app.js?v=20260922j"></script>
 </body>
 </html>

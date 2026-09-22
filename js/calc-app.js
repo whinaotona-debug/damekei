@@ -1,6 +1,5 @@
 /**
- * ダメ計 — 構築1匹 → 相手
- * 攻撃/防御タブ、性格倍率、ランク矢印、現在HP対応
+ * ダメ計 — 構築を攻撃側 / 受け側どちらにも置ける
  */
 import {
   STAT_KEYS,
@@ -18,7 +17,7 @@ import {
   clampEvAssign,
 } from "./stats.js?v=20260922h";
 import { TYPES } from "./types.js?v=20260922a";
-import { calculateDamage } from "./damage.js?v=20260922h";
+import { calculateDamage } from "./damage.js?v=20260922j";
 import {
   loadTeams,
   getActiveSlot,
@@ -48,18 +47,22 @@ const state = {
   teams: loadTeams(),
   slot: getActiveSlot(),
   myIndex: 0,
+  /** 構築メンバーの役割: atk=攻撃する / def=受ける */
+  teamRole: "atk",
   move: null,
   editSide: "atk",
-  foe: null,
-  foeItem: "なし",
-  foeAbility: "",
-  foeEvs: emptyEvs(),
-  foeNatureMults: emptyNatureMults(),
-  foeRanks: emptyRanks(),
-  foeCurrentHp: null,
-  atkNatureMults: emptyNatureMults(),
-  atkRanks: emptyRanks(),
-  atkCurrentHp: null,
+  /** 相手（図鑑から） */
+  opp: null,
+  oppItem: "なし",
+  oppAbility: "",
+  oppEvs: emptyEvs(),
+  oppNatureMults: emptyNatureMults(),
+  oppRanks: emptyRanks(),
+  oppCurrentHp: null,
+  /** 構築メンバー側の補正 */
+  teamNatureMults: emptyNatureMults(),
+  teamRanks: emptyRanks(),
+  teamCurrentHp: null,
   resultsOpen: true,
 };
 
@@ -75,21 +78,24 @@ function team() {
 function myMember() {
   return team()?.members?.[state.myIndex] || null;
 }
+function teamIsAtk() {
+  return state.teamRole !== "def";
+}
 
 function escAttr(s) {
   return String(s || "").replace(/"/g, "&quot;");
 }
 
-function syncAtkFromMember() {
+function syncTeamFromMember() {
   const m = myMember();
   const poke = m?.species ? pokeByName(m.species) : null;
-  state.atkNatureMults = natureMultsFromName(m?.nature || "がんばりや");
-  state.atkRanks = emptyRanks();
+  state.teamNatureMults = natureMultsFromName(m?.nature || "がんばりや");
+  state.teamRanks = emptyRanks();
   if (poke) {
-    const stats = calcAllStatsFromMults(poke.baseStats, m.evs || emptyEvs(), state.atkNatureMults);
-    state.atkCurrentHp = stats.hp;
+    const stats = calcAllStatsFromMults(poke.baseStats, m.evs || emptyEvs(), state.teamNatureMults);
+    state.teamCurrentHp = stats.hp;
   } else {
-    state.atkCurrentHp = null;
+    state.teamCurrentHp = null;
   }
 }
 
@@ -136,6 +142,22 @@ function renderTeamSelect() {
     .join("");
 }
 
+function setTeamRole(role) {
+  const next = role === "def" ? "def" : "atk";
+  if (state.teamRole === next) return;
+  state.teamRole = next;
+  state.move = null;
+  document.querySelectorAll(".role-tab").forEach((btn) => {
+    const on = btn.dataset.role === state.teamRole;
+    btn.classList.toggle("on", on);
+    btn.setAttribute("aria-selected", on ? "true" : "false");
+  });
+  // 受け側に切り替えたら攻撃側タブを開いて相手を選びやすく
+  setEditSide(state.teamRole === "def" ? "atk" : "atk");
+  renderAll();
+  recalc();
+}
+
 function setEditSide(side) {
   state.editSide = side === "def" ? "def" : "atk";
   document.querySelectorAll(".side-tab").forEach((btn) => {
@@ -147,7 +169,7 @@ function setEditSide(side) {
   $("side-def").hidden = state.editSide !== "def";
 }
 
-function natureMultRow(statKeys, mults, side) {
+function natureMultRow(statKeys, mults, key) {
   return `<div class="stat-edit-block">
     <div class="stat-edit-label">性格補正</div>
     <div class="stat-edit-grid">
@@ -156,7 +178,7 @@ function natureMultRow(statKeys, mults, side) {
           const cur = clampNatureMult(mults[k] ?? 1);
           return `<div class="stat-edit-cell">
             <span class="stat-edit-name">${STAT_LABELS[k]}</span>
-            <div class="mult-group" data-side="${side}" data-stat="${k}">
+            <div class="mult-group" data-key="${key}" data-stat="${k}">
               ${NATURE_OPTS.map(
                 (v) =>
                   `<button type="button" class="mult-btn ${cur === v ? "on" : ""}" data-mult="${v}">${v}</button>`
@@ -169,7 +191,7 @@ function natureMultRow(statKeys, mults, side) {
   </div>`;
 }
 
-function rankRow(statKeys, ranks, side) {
+function rankRow(statKeys, ranks, key) {
   return `<div class="stat-edit-block">
     <div class="stat-edit-label">ランク補正</div>
     <div class="stat-edit-grid">
@@ -180,9 +202,9 @@ function rankRow(statKeys, ranks, side) {
           return `<div class="stat-edit-cell">
             <span class="stat-edit-name">${STAT_LABELS[k]}</span>
             <div class="rank-group">
-              <button type="button" class="rank-btn" data-rank-side="${side}" data-rank-stat="${k}" data-rank-delta="-1" aria-label="下げる">−</button>
+              <button type="button" class="rank-btn" data-rank-key="${key}" data-rank-stat="${k}" data-rank-delta="-1" aria-label="下げる">−</button>
               <span class="rank-val ${r > 0 ? "up" : r < 0 ? "down" : ""}">${sign}</span>
-              <button type="button" class="rank-btn" data-rank-side="${side}" data-rank-stat="${k}" data-rank-delta="1" aria-label="上げる">＋</button>
+              <button type="button" class="rank-btn" data-rank-key="${key}" data-rank-stat="${k}" data-rank-delta="1" aria-label="上げる">＋</button>
             </div>
           </div>`;
         })
@@ -191,24 +213,24 @@ function rankRow(statKeys, ranks, side) {
   </div>`;
 }
 
-function hpRow(side, current, maxHp) {
+function hpRow(key, current, maxHp) {
   const cur = current == null ? maxHp : Math.max(1, Math.min(maxHp, current));
   return `<div class="stat-edit-block">
     <div class="stat-edit-label">現在HP</div>
     <div class="hp-edit">
-      <input type="number" inputmode="numeric" min="1" max="${maxHp}" step="1" data-hp-side="${side}" value="${cur}" />
+      <input type="number" inputmode="numeric" min="1" max="${maxHp}" step="1" data-hp-key="${key}" value="${cur}" />
       <span class="hp-max">/ ${maxHp}</span>
-      <button type="button" class="ev-btn" data-hp-fill="${side}" data-hp-val="${maxHp}">満タン</button>
-      <button type="button" class="ev-btn" data-hp-fill="${side}" data-hp-val="${Math.max(1, Math.floor(maxHp * 0.75))}">3/4</button>
-      <button type="button" class="ev-btn" data-hp-fill="${side}" data-hp-val="${Math.max(1, Math.floor(maxHp * 0.5))}">1/2</button>
+      <button type="button" class="ev-btn" data-hp-fill="${key}" data-hp-val="${maxHp}">満タン</button>
+      <button type="button" class="ev-btn" data-hp-fill="${key}" data-hp-val="${Math.max(1, Math.floor(maxHp * 0.75))}">3/4</button>
+      <button type="button" class="ev-btn" data-hp-fill="${key}" data-hp-val="${Math.max(1, Math.floor(maxHp * 0.5))}">1/2</button>
     </div>
   </div>`;
 }
 
-function renderMyPick() {
+function teamPickHtml(containerId) {
   ensureMyIndex();
   const t = team();
-  $("my-pick").innerHTML = t.members
+  return t.members
     .map((m, i) => {
       if (!m.species) {
         return `<button type="button" class="rev-mine empty" disabled>#${i + 1}</button>`;
@@ -223,48 +245,69 @@ function renderMyPick() {
       </button>`;
     })
     .join("");
-  $("my-pick").querySelectorAll("[data-mine]").forEach((btn) => {
+}
+
+function wireTeamPick(container) {
+  container.querySelectorAll("[data-mine]").forEach((btn) => {
     btn.addEventListener("click", () => {
       state.myIndex = Number(btn.dataset.mine);
-      state.move = null;
-      syncAtkFromMember();
-      renderAttacker();
+      if (teamIsAtk()) state.move = null;
+      syncTeamFromMember();
+      renderAll();
       recalc();
     });
   });
 }
 
-function renderAttacker() {
-  ensureMyIndex();
-  renderMyPick();
+function oppSlotHtml(label) {
+  if (!state.opp) {
+    return `<button type="button" class="poke-slot foe-slot" data-open-opp>
+      <strong>${label}</strong><span class="meta">タップで図鑑から選択</span>
+    </button>`;
+  }
+  const poke = state.opp;
+  return `<button type="button" class="poke-slot foe-slot" data-open-opp>
+    ${pokeImgHtml(poke.name, { size: 48, dex: poke.dex, round: true })}
+    <div><strong>${poke.name}</strong><span class="meta">${poke.types.join(" / ")}</span></div>
+  </button>`;
+}
+
+function teamDetailHtml(asSide) {
   const m = myMember();
-  const box = $("atk-detail");
   if (!m?.species) {
-    box.hidden = false;
-    box.innerHTML = `<p class="hint">構築にポケモンを入れてください。<a href="./team.html">構築を編集</a></p>`;
-    updateMoveBtn();
-    return;
+    return `<p class="hint">構築にポケモンを入れてください。<a href="./team.html">構築を編集</a></p>`;
   }
   const poke = pokeByName(m.species);
-  if (!poke) {
-    box.hidden = false;
-    box.innerHTML = `<p class="hint">データなし: ${m.species}</p>`;
-    updateMoveBtn();
-    return;
-  }
-  const evs = m.evs || emptyEvs();
-  const stats = calcAllStatsFromMults(poke.baseStats, evs, state.atkNatureMults);
-  if (state.atkCurrentHp == null) state.atkCurrentHp = stats.hp;
-  state.atkCurrentHp = Math.max(1, Math.min(stats.hp, state.atkCurrentHp));
-  const item = isMegaName(poke.name) ? "メガストーン" : m.item || "なし";
+  if (!poke) return `<p class="hint">データなし: ${m.species}</p>`;
 
-  box.hidden = false;
-  box.innerHTML = `
+  const evs = m.evs || emptyEvs();
+  const stats = calcAllStatsFromMults(poke.baseStats, evs, state.teamNatureMults);
+  if (state.teamCurrentHp == null) state.teamCurrentHp = stats.hp;
+  state.teamCurrentHp = Math.max(1, Math.min(stats.hp, state.teamCurrentHp));
+  const item = isMegaName(poke.name) ? "メガストーン" : m.item || "なし";
+  const natureKeys = asSide === "atk" ? ATK_VISIBLE_STATS : ["atk", "def", "spa", "spd", "spe"];
+  const rankKeys = asSide === "atk" ? ATK_VISIBLE_STATS : ["atk", "def", "spa", "spd"];
+
+  let movesHtml = "";
+  if (asSide === "atk") {
+    movesHtml = `<div class="team-moves-quick">
+      ${[0, 1, 2, 3]
+        .map((i) => {
+          const mv = moveByName(m.moves?.[i]);
+          if (!mv) return `<button type="button" class="move-chip empty" disabled>技${i + 1}</button>`;
+          const active = state.move?.name === mv.name ? "active" : "";
+          return `<button type="button" class="move-chip ${active}" data-quick-move="${escAttr(mv.name)}">${typeIconHtml(mv.type, { size: "sm" })} ${mv.name}</button>`;
+        })
+        .join("")}
+    </div>`;
+  }
+
+  return `
     <div class="atk-summary">
       <div class="atk-summary-main">
         ${pokeImgHtml(poke.name, { size: 64, dex: poke.dex, round: true })}
         <div>
-          <div class="ov-name">${poke.name}</div>
+          <div class="ov-name">${poke.name} <span class="tag-mine">構築</span></div>
           <div class="ov-meta">${(poke.types || []).map((t) => typeIconHtml(t, { size: "sm" })).join("")} ${m.ability || poke.abilities?.[0] || "—"}</div>
           <div class="ov-meta ov-item-row">${itemImgHtml(item, { size: 22 })}<span>${item}</span></div>
           <div class="ov-meta muted">努力 ${totalEv(evs)}/${EV_MAX_TOTAL}</div>
@@ -273,90 +316,52 @@ function renderAttacker() {
       <div class="stats-inline">
         ${STAT_KEYS.map((k) => `<div class="cell"><span>${STAT_LABELS[k]}</span><strong>${stats[k]}</strong></div>`).join("")}
       </div>
-      ${hpRow("atk", state.atkCurrentHp, stats.hp)}
-      ${natureMultRow(ATK_VISIBLE_STATS, state.atkNatureMults, "atk")}
-      ${rankRow(ATK_VISIBLE_STATS, state.atkRanks, "atk")}
-      <div class="team-moves-quick">
-        ${[0, 1, 2, 3]
-          .map((i) => {
-            const mv = moveByName(m.moves?.[i]);
-            if (!mv) return `<button type="button" class="move-chip empty" disabled>技${i + 1}</button>`;
-            const active = state.move?.name === mv.name ? "active" : "";
-            return `<button type="button" class="move-chip ${active}" data-quick-move="${escAttr(mv.name)}">${typeIconHtml(mv.type, { size: "sm" })} ${mv.name}</button>`;
-          })
-          .join("")}
-      </div>
+      ${hpRow("team", state.teamCurrentHp, stats.hp)}
+      ${natureMultRow(natureKeys, state.teamNatureMults, "team")}
+      ${rankRow(rankKeys, state.teamRanks, "team")}
+      ${movesHtml}
     </div>`;
-
-  box.querySelectorAll("[data-quick-move]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      state.move = moveByName(btn.dataset.quickMove);
-      updateMoveBtn();
-      renderAttacker();
-      recalc();
-    });
-  });
-  wireStatEditors(box);
-  updateMoveBtn();
 }
 
-function updateMoveBtn() {
-  const btn = $("move-btn");
-  if (!state.move) {
-    btn.innerHTML = `<div class="k">使う技</div><div class="title">技を選択</div>`;
-    return;
-  }
-  const mv = state.move;
-  btn.innerHTML = `<div class="k">使う技</div><div class="title">${typeIconHtml(mv.type, { size: "sm" })} ${mv.name}</div><div class="sub">${mv.category}　威力 ${mv.power ?? "—"}</div>`;
-}
-
-function renderFoe() {
-  const slot = $("foe-slot");
-  const detail = $("foe-detail");
-  if (!state.foe) {
-    slot.innerHTML = `<strong>相手を選ぶ</strong><span class="meta">タップで図鑑から選択</span>`;
-    detail.hidden = true;
-    detail.innerHTML = "";
-    return;
-  }
-  const poke = state.foe;
+function oppDetailHtml(asSide) {
+  if (!state.opp) return "";
+  const poke = state.opp;
   const abs = poke.abilities || [];
-  if (!state.foeAbility || !abs.includes(state.foeAbility)) state.foeAbility = abs[0] || "";
-  if (isMegaName(poke.name)) state.foeItem = "メガストーン";
-  const stats = calcAllStatsFromMults(poke.baseStats, state.foeEvs, state.foeNatureMults);
-  if (state.foeCurrentHp == null) state.foeCurrentHp = stats.hp;
-  state.foeCurrentHp = Math.max(1, Math.min(stats.hp, state.foeCurrentHp));
-  const evSum = totalEv(state.foeEvs);
+  if (!state.oppAbility || !abs.includes(state.oppAbility)) state.oppAbility = abs[0] || "";
+  if (isMegaName(poke.name)) state.oppItem = "メガストーン";
+  const stats = calcAllStatsFromMults(poke.baseStats, state.oppEvs, state.oppNatureMults);
+  if (state.oppCurrentHp == null) state.oppCurrentHp = stats.hp;
+  state.oppCurrentHp = Math.max(1, Math.min(stats.hp, state.oppCurrentHp));
+  const evSum = totalEv(state.oppEvs);
   const mega = isMegaName(poke.name);
+  const natureKeys = asSide === "atk" ? ATK_VISIBLE_STATS.concat(["spe"]) : ["atk", "def", "spa", "spd", "spe"];
+  const rankKeys = asSide === "atk" ? ATK_VISIBLE_STATS : ["atk", "def", "spa", "spd"];
 
-  slot.innerHTML = `${pokeImgHtml(poke.name, { size: 48, dex: poke.dex, round: true })}
-    <div><strong>${poke.name}</strong><span class="meta">${poke.types.join(" / ")}</span></div>`;
-  detail.hidden = false;
-  detail.innerHTML = `
+  return `
     <div class="base-stats-line">種族 H${poke.baseStats.hp} A${poke.baseStats.atk} B${poke.baseStats.def} C${poke.baseStats.spa} D${poke.baseStats.spd} S${poke.baseStats.spe}</div>
     <div class="stats-inline">
       ${STAT_KEYS.map((k) => `<div class="cell"><span>${STAT_LABELS[k]}</span><strong data-stat="${k}">${stats[k]}</strong></div>`).join("")}
     </div>
-    ${hpRow("def", state.foeCurrentHp, stats.hp)}
+    ${hpRow("opp", state.oppCurrentHp, stats.hp)}
     <div class="ctrl-row">
       <label>特性</label>
-      <select data-field="ability">${abs.map((a) => `<option value="${a}" ${a === state.foeAbility ? "selected" : ""}>${a}</option>`).join("")}</select>
+      <select data-field="ability">${abs.map((a) => `<option value="${a}" ${a === state.oppAbility ? "selected" : ""}>${a}</option>`).join("")}</select>
     </div>
     <div class="ctrl-row">
       <label>持ち物</label>
       <button type="button" class="nature-btn item-pick-btn" data-open-item ${mega ? "disabled" : ""}>
-        ${itemImgHtml(state.foeItem, { size: 20 })} ${state.foeItem}${mega ? " 🔒" : ""}
+        ${itemImgHtml(state.oppItem, { size: 20 })} ${state.oppItem}${mega ? " 🔒" : ""}
       </button>
     </div>
-    ${natureMultRow(["atk", "def", "spa", "spd", "spe"], state.foeNatureMults, "def")}
-    ${rankRow(["atk", "def", "spa", "spd"], state.foeRanks, "def")}
+    ${natureMultRow([...new Set(natureKeys)], state.oppNatureMults, "opp")}
+    ${rankRow(rankKeys, state.oppRanks, "opp")}
     <div class="ev-row cols-3">
       ${STAT_KEYS.map(
         (k) => `
         <div class="ev-cell">
           <label>${STAT_LABELS[k]}</label>
           <div class="ev-controls">
-            <input type="number" inputmode="numeric" min="0" max="${EV_MAX_PER}" step="1" data-ev="${k}" value="${state.foeEvs[k] || 0}" />
+            <input type="number" inputmode="numeric" min="0" max="${EV_MAX_PER}" step="1" data-ev="${k}" value="${state.oppEvs[k] || 0}" />
             <button type="button" class="ev-btn" data-ev-set="${k}" data-ev-val="0">0</button>
             <button type="button" class="ev-btn primary32" data-ev-set="${k}" data-ev-val="32">32</button>
           </div>
@@ -365,7 +370,67 @@ function renderFoe() {
     </div>
     <div class="ev-total ${evSum > EV_MAX_TOTAL ? "warn" : ""}">努力値合計 ${evSum} / ${EV_MAX_TOTAL}</div>
   `;
-  wireStatEditors(detail);
+}
+
+function renderAll() {
+  const atkPick = $("atk-pick");
+  const defPick = $("def-pick");
+  const atkDetail = $("atk-detail");
+  const defDetail = $("def-detail");
+
+  if (teamIsAtk()) {
+    atkPick.innerHTML = `<div class="rev-mine-grid">${teamPickHtml()}</div>`;
+    wireTeamPick(atkPick);
+    atkDetail.hidden = false;
+    atkDetail.innerHTML = teamDetailHtml("atk");
+    wireTeamDetail(atkDetail);
+
+    defPick.innerHTML = oppSlotHtml("相手（防御）を選ぶ");
+    defPick.querySelector("[data-open-opp]")?.addEventListener("click", openOppPicker);
+    if (state.opp) {
+      defDetail.hidden = false;
+      defDetail.innerHTML = oppDetailHtml("def");
+      wireOppDetail(defDetail);
+    } else {
+      defDetail.hidden = true;
+      defDetail.innerHTML = "";
+    }
+  } else {
+    atkPick.innerHTML = oppSlotHtml("相手（攻撃）を選ぶ");
+    atkPick.querySelector("[data-open-opp]")?.addEventListener("click", openOppPicker);
+    if (state.opp) {
+      atkDetail.hidden = false;
+      atkDetail.innerHTML = oppDetailHtml("atk");
+      wireOppDetail(atkDetail);
+    } else {
+      atkDetail.hidden = true;
+      atkDetail.innerHTML = "";
+    }
+
+    defPick.innerHTML = `<div class="rev-mine-grid">${teamPickHtml()}</div>`;
+    wireTeamPick(defPick);
+    defDetail.hidden = false;
+    defDetail.innerHTML = teamDetailHtml("def");
+    wireTeamDetail(defDetail);
+  }
+
+  updateMoveBtn();
+}
+
+function wireTeamDetail(root) {
+  root.querySelectorAll("[data-quick-move]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      state.move = moveByName(btn.dataset.quickMove);
+      updateMoveBtn();
+      renderAll();
+      recalc();
+    });
+  });
+  wireStatEditors(root);
+}
+
+function wireOppDetail(root) {
+  wireStatEditors(root);
 }
 
 function wireStatEditors(root) {
@@ -373,59 +438,119 @@ function wireStatEditors(root) {
     btn.addEventListener("click", () => {
       const group = btn.closest(".mult-group");
       if (!group) return;
-      const side = group.dataset.side;
+      const key = group.dataset.key;
       const stat = group.dataset.stat;
       const mult = clampNatureMult(btn.dataset.mult);
-      if (side === "atk") state.atkNatureMults[stat] = mult;
-      else state.foeNatureMults[stat] = mult;
-      if (side === "atk") renderAttacker();
-      else renderFoe();
+      if (key === "team") state.teamNatureMults[stat] = mult;
+      else state.oppNatureMults[stat] = mult;
+      renderAll();
       recalc();
     });
   });
   root.querySelectorAll("[data-rank-delta]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      const side = btn.dataset.rankSide;
+      const key = btn.dataset.rankKey;
       const stat = btn.dataset.rankStat;
       const delta = Number(btn.dataset.rankDelta) || 0;
-      const ranks = side === "atk" ? state.atkRanks : state.foeRanks;
+      const ranks = key === "team" ? state.teamRanks : state.oppRanks;
       ranks[stat] = Math.max(-6, Math.min(6, (ranks[stat] || 0) + delta));
-      if (side === "atk") renderAttacker();
-      else renderFoe();
+      renderAll();
       recalc();
     });
   });
-  root.querySelectorAll("[data-hp-side]").forEach((inp) => {
+  root.querySelectorAll("[data-hp-key]").forEach((inp) => {
     inp.addEventListener("change", () => {
-      const side = inp.dataset.hpSide;
+      const key = inp.dataset.hpKey;
       const v = Math.max(1, Number(inp.value) || 1);
-      if (side === "atk") {
-        state.atkCurrentHp = v;
-        renderAttacker();
-      } else {
-        state.foeCurrentHp = v;
-        renderFoe();
-      }
+      if (key === "team") state.teamCurrentHp = v;
+      else state.oppCurrentHp = v;
+      renderAll();
       recalc();
     });
   });
   root.querySelectorAll("[data-hp-fill]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      const side = btn.dataset.hpFill;
+      const key = btn.dataset.hpFill;
       const v = Number(btn.dataset.hpVal) || 1;
-      if (side === "atk") {
-        state.atkCurrentHp = v;
-        renderAttacker();
-      } else {
-        state.foeCurrentHp = v;
-        renderFoe();
-      }
+      if (key === "team") state.teamCurrentHp = v;
+      else state.oppCurrentHp = v;
+      renderAll();
       recalc();
     });
   });
 }
 
-function formatResult(result) {
+function updateMoveBtn() {
+  const btn = $("move-btn");
+  const who = teamIsAtk() ? "構築" : "相手";
+  if (!state.move) {
+    btn.innerHTML = `<div class="k">${who}の技</div><div class="title">技を選択</div>`;
+    return;
+  }
+  const mv = state.move;
+  btn.innerHTML = `<div class="k">${who}の技</div><div class="title">${typeIconHtml(mv.type, { size: "sm" })} ${mv.name}</div><div class="sub">${mv.category}　威力 ${mv.power ?? "—"}</div>`;
+}
+
+function sidesForCalc() {
+  const m = myMember();
+  const teamPoke = m?.species ? pokeByName(m.species) : null;
+  if (!teamPoke || !state.opp || !state.move) return null;
+
+  const teamItem = isMegaName(teamPoke.name) ? "メガストーン" : m.item || "なし";
+  const teamEvs = m.evs || emptyEvs();
+  const teamStats = calcAllStatsFromMults(teamPoke.baseStats, teamEvs, state.teamNatureMults);
+  const teamHp = state.teamCurrentHp ?? teamStats.hp;
+
+  const opp = state.opp;
+  const oppItem = isMegaName(opp.name) ? "メガストーン" : state.oppItem || "なし";
+  const oppStats = calcAllStatsFromMults(opp.baseStats, state.oppEvs, state.oppNatureMults);
+  const oppHp = state.oppCurrentHp ?? oppStats.hp;
+
+  if (teamIsAtk()) {
+    return {
+      attackerPoke: teamPoke,
+      defenderPoke: opp,
+      attackerEvs: teamEvs,
+      defenderEvs: state.oppEvs,
+      attackerNatureMults: state.teamNatureMults,
+      defenderNatureMults: state.oppNatureMults,
+      attackerAbility: m.ability || teamPoke.abilities?.[0] || "",
+      defenderAbility: state.oppAbility || opp.abilities?.[0] || "",
+      attackerItem: teamItem,
+      defenderItem: oppItem,
+      attackerRanks: state.teamRanks,
+      defenderRanks: state.oppRanks,
+      attackerHpRatio: teamStats.hp > 0 ? teamHp / teamStats.hp : 1,
+      defenderCurrentHp: oppHp,
+      atkName: teamPoke.name,
+      defName: opp.name,
+      atkItemLabel: teamItem,
+      defItemLabel: oppItem,
+    };
+  }
+  return {
+    attackerPoke: opp,
+    defenderPoke: teamPoke,
+    attackerEvs: state.oppEvs,
+    defenderEvs: teamEvs,
+    attackerNatureMults: state.oppNatureMults,
+    defenderNatureMults: state.teamNatureMults,
+    attackerAbility: state.oppAbility || opp.abilities?.[0] || "",
+    defenderAbility: m.ability || teamPoke.abilities?.[0] || "",
+    attackerItem: oppItem,
+    defenderItem: teamItem,
+    attackerRanks: state.oppRanks,
+    defenderRanks: state.teamRanks,
+    attackerHpRatio: oppStats.hp > 0 ? oppHp / oppStats.hp : 1,
+    defenderCurrentHp: teamHp,
+    atkName: opp.name,
+    defName: teamPoke.name,
+    atkItemLabel: oppItem,
+    defItemLabel: teamItem,
+  };
+}
+
+function formatResult(result, sides) {
   if (result?.error) {
     return `<div class="bulk-card"><div class="who">計算不可</div><div class="ko">${result.error}</div></div>`;
   }
@@ -442,12 +567,12 @@ function formatResult(result) {
   const pct = minP != null && maxP != null ? `${minP}〜${maxP}%` : "—";
   const hi = Number(maxP) || 0;
   const tone = hi >= 100 ? "tone-bad" : hi >= 50 ? "tone-warn" : "tone-ok";
-  const m = myMember();
   const details = (result.details || []).map((d) => `<li>${d}</li>`).join("");
+  const roleNote = teamIsAtk() ? "構築→相手" : "相手→構築";
   return `<div class="bulk-card ${tone} result-main">
-    <div class="who">${m?.species || "?"} → ${state.foe?.name || "?"}</div>
+    <div class="who">${sides.atkName} → ${sides.defName}</div>
     <div class="dmg">${pct}</div>
-    <div class="meta">${itemImgHtml(m?.item, { size: 18 })} ${m?.item || "なし"}　vs　${itemImgHtml(state.foeItem, { size: 18 })} ${state.foeItem}　HP${hpLabel}</div>
+    <div class="meta">${roleNote}　${itemImgHtml(sides.atkItemLabel, { size: 18 })} ${sides.atkItemLabel}　vs　${itemImgHtml(sides.defItemLabel, { size: 18 })} ${sides.defItemLabel}　HP${hpLabel}</div>
     <div class="ko">${dmgMin}〜${dmgMax}　${ko}</div>
     <ul class="result-details">${details}</ul>
   </div>`;
@@ -455,41 +580,26 @@ function formatResult(result) {
 
 function recalc() {
   const box = $("bulk-results");
-  const m = myMember();
-  const atkPoke = m?.species ? pokeByName(m.species) : null;
-  $("results-title").textContent =
-    atkPoke && state.foe ? `${atkPoke.name} → ${state.foe.name}` : "ダメージ結果";
+  const sides = sidesForCalc();
+  $("results-title").textContent = sides ? `${sides.atkName} → ${sides.defName}` : "ダメージ結果";
 
-  if (!atkPoke || !state.move || !state.foe) {
-    box.innerHTML = `<p class="hint">攻撃側・技・防御側を選ぶとダメージが出ます</p>`;
+  if (!sides) {
+    const need = teamIsAtk()
+      ? "構築・技・相手（防御）を選ぶとダメージが出ます"
+      : "相手（攻撃）・技・構築を選ぶとダメージが出ます";
+    box.innerHTML = `<p class="hint">${need}</p>`;
     $("result-mini").textContent = "未計算";
     return;
   }
 
-  const atkItem = isMegaName(atkPoke.name) ? "メガストーン" : m.item || "なし";
-  const atkStats = calcAllStatsFromMults(atkPoke.baseStats, m.evs || emptyEvs(), state.atkNatureMults);
-  const atkHp = state.atkCurrentHp ?? atkStats.hp;
   const result = calculateDamage({
-    attackerPoke: atkPoke,
-    defenderPoke: state.foe,
     move: state.move,
-    attackerEvs: m.evs || emptyEvs(),
-    defenderEvs: state.foeEvs,
-    attackerNatureMults: state.atkNatureMults,
-    defenderNatureMults: state.foeNatureMults,
-    attackerAbility: m.ability || atkPoke.abilities?.[0] || "",
-    defenderAbility: state.foeAbility || state.foe.abilities?.[0] || "",
-    attackerItem: atkItem,
-    defenderItem: state.foeItem || "なし",
-    attackerRanks: state.atkRanks,
-    defenderRanks: state.foeRanks,
     defenderStatus: "なし",
-    attackerHpRatio: atkStats.hp > 0 ? atkHp / atkStats.hp : 1,
-    defenderCurrentHp: state.foeCurrentHp,
+    ...sides,
     ...fieldOpts(),
   });
 
-  box.innerHTML = formatResult(result);
+  box.innerHTML = formatResult(result, sides);
   if (!result.error) {
     const field = fieldOpts();
     const pack = result.critical && field.critical ? result.critical : result.normal || result;
@@ -500,9 +610,10 @@ function recalc() {
   }
 }
 
-function openFoePicker() {
+function openOppPicker() {
+  const title = teamIsAtk() ? "相手（防御側）" : "相手（攻撃側）";
   openModal(
-    "相手ポケモン",
+    title,
     `<div class="list-filters">
       <input type="search" id="q" placeholder="名前検索" />
       <select id="poke-type"><option value="">タイプ</option>${TYPES.map((t) => `<option value="${t}">${t}</option>`).join("")}</select>
@@ -525,16 +636,17 @@ function openFoePicker() {
       .join("");
     $("list").querySelectorAll("[data-name]").forEach((el) => {
       el.addEventListener("click", () => {
-        state.foe = pokeByName(el.dataset.name);
-        state.foeAbility = state.foe.abilities?.[0] || "";
-        state.foeItem = isMegaName(state.foe.name) ? "メガストーン" : "なし";
-        state.foeEvs = emptyEvs();
-        state.foeNatureMults = emptyNatureMults();
-        state.foeRanks = emptyRanks();
-        state.foeCurrentHp = null;
+        state.opp = pokeByName(el.dataset.name);
+        state.oppAbility = state.opp.abilities?.[0] || "";
+        state.oppItem = isMegaName(state.opp.name) ? "メガストーン" : "なし";
+        state.oppEvs = emptyEvs();
+        state.oppNatureMults = emptyNatureMults();
+        state.oppRanks = emptyRanks();
+        state.oppCurrentHp = null;
+        if (!teamIsAtk()) state.move = null;
         closeModal();
-        setEditSide("def");
-        renderFoe();
+        setEditSide(teamIsAtk() ? "def" : "atk");
+        renderAll();
         recalc();
       });
     });
@@ -545,26 +657,34 @@ function openFoePicker() {
 }
 
 function openMovePicker() {
-  const m = myMember();
-  const atk = m?.species ? pokeByName(m.species) : null;
-  if (!atk) return;
+  let species = null;
+  if (teamIsAtk()) {
+    const m = myMember();
+    species = m?.species || null;
+  } else {
+    species = state.opp?.name || null;
+  }
+  if (!species) {
+    alert(teamIsAtk() ? "先に構築のポケモンを選んでください" : "先に相手（攻撃側）を選んでください");
+    return;
+  }
   openMovePickerList({
-    title: "技",
+    title: teamIsAtk() ? "構築の技" : "相手の技",
     moves: state.moves,
     learnsets: state.learnsets,
-    species: atk.name,
+    species,
     allowStatus: false,
     onPick: (mv) => {
       state.move = mv;
       updateMoveBtn();
-      renderAttacker();
+      renderAll();
       recalc();
     },
   });
 }
 
 function openItemPicker() {
-  if (isMegaName(state.foe?.name)) return;
+  if (isMegaName(state.opp?.name)) return;
   openModal("相手持ち物", `<div class="list-filters"><input type="search" id="q" /></div><div id="list"></div>`);
   const render = () => {
     const q = $("q").value;
@@ -581,9 +701,9 @@ function openItemPicker() {
       .join("");
     $("list").querySelectorAll("[data-name]").forEach((el) => {
       el.addEventListener("click", () => {
-        state.foeItem = el.dataset.name;
+        state.oppItem = el.dataset.name;
         closeModal();
-        renderFoe();
+        renderAll();
         recalc();
       });
     });
@@ -602,6 +722,9 @@ function wire() {
   wireModalClose();
   wireUiModeToggle();
 
+  document.querySelectorAll(".role-tab").forEach((btn) => {
+    btn.addEventListener("click", () => setTeamRole(btn.dataset.role));
+  });
   document.querySelectorAll(".side-tab").forEach((btn) => {
     btn.addEventListener("click", () => setEditSide(btn.dataset.side));
   });
@@ -616,15 +739,14 @@ function wire() {
     state.teams = loadTeams();
     state.move = null;
     ensureMyIndex();
-    syncAtkFromMember();
-    renderAttacker();
+    syncTeamFromMember();
+    renderAll();
     recalc();
   });
 
-  $("foe-slot").addEventListener("click", openFoePicker);
   $("move-btn").addEventListener("click", openMovePicker);
 
-  $("foe-detail").addEventListener("click", (e) => {
+  const onOppDetailClick = (e) => {
     const t = e.target;
     if (!(t instanceof HTMLElement)) return;
     if (t.dataset.openItem !== undefined || t.closest?.("[data-open-item]")) {
@@ -632,60 +754,46 @@ function wire() {
       return;
     }
     if (t.dataset.evSet) {
-      state.foeEvs = clampEvAssign(state.foeEvs, t.dataset.evSet, Number(t.dataset.evVal) || 0);
-      renderFoe();
+      state.oppEvs = clampEvAssign(state.oppEvs, t.dataset.evSet, Number(t.dataset.evVal) || 0);
+      renderAll();
       recalc();
     }
-  });
-
-  $("foe-detail").addEventListener("change", (e) => {
+  };
+  const onOppDetailChange = (e) => {
     const t = e.target;
     if (!(t instanceof HTMLElement)) return;
     if (t.dataset.field === "ability") {
-      state.foeAbility = t.value;
+      state.oppAbility = t.value;
       recalc();
     }
     if (t.dataset.ev) {
-      state.foeEvs = clampEvAssign(state.foeEvs, t.dataset.ev, Number(t.value) || 0);
-      t.value = String(state.foeEvs[t.dataset.ev]);
-      renderFoe();
+      state.oppEvs = clampEvAssign(state.oppEvs, t.dataset.ev, Number(t.value) || 0);
+      t.value = String(state.oppEvs[t.dataset.ev]);
+      renderAll();
       recalc();
     }
-  });
-
-  $("foe-detail").addEventListener("input", (e) => {
+  };
+  const onOppDetailInput = (e) => {
     const t = e.target;
     if (!(t instanceof HTMLInputElement) || !t.dataset.ev) return;
-    state.foeEvs = clampEvAssign(state.foeEvs, t.dataset.ev, Number(t.value) || 0);
-    const stats = calcAllStatsFromMults(state.foe.baseStats, state.foeEvs, state.foeNatureMults);
-    for (const k of STAT_KEYS) {
-      const el = $("foe-detail").querySelector(`[data-stat="${k}"]`);
-      if (el) el.textContent = String(stats[k]);
+    state.oppEvs = clampEvAssign(state.oppEvs, t.dataset.ev, Number(t.value) || 0);
+    if (state.opp) {
+      const stats = calcAllStatsFromMults(state.opp.baseStats, state.oppEvs, state.oppNatureMults);
+      for (const k of STAT_KEYS) {
+        const el = document.querySelector(`#atk-detail [data-stat="${k}"], #def-detail [data-stat="${k}"]`);
+        if (el) el.textContent = String(stats[k]);
+      }
+      if (state.oppCurrentHp != null) state.oppCurrentHp = Math.min(state.oppCurrentHp, stats.hp);
     }
-    const sum = totalEv(state.foeEvs);
-    const tot = $("foe-detail").querySelector(".ev-total");
-    if (tot) {
-      tot.textContent = `努力値合計 ${sum} / ${EV_MAX_TOTAL}`;
-      tot.classList.toggle("warn", sum > EV_MAX_TOTAL);
-    }
-    if (state.foeCurrentHp != null) state.foeCurrentHp = Math.min(state.foeCurrentHp, stats.hp);
     recalc();
-  });
+  };
 
-  $("foe-detail").addEventListener(
-    "wheel",
-    (e) => {
-      const t = e.target;
-      if (!(t instanceof HTMLInputElement) || !t.dataset.ev) return;
-      if (document.activeElement !== t) return;
-      e.preventDefault();
-      const cur = Number(t.value) || 0;
-      state.foeEvs = clampEvAssign(state.foeEvs, t.dataset.ev, cur + (e.deltaY < 0 ? 1 : -1));
-      t.value = String(state.foeEvs[t.dataset.ev]);
-      t.dispatchEvent(new Event("input", { bubbles: true }));
-    },
-    { passive: false }
-  );
+  $("atk-detail").addEventListener("click", onOppDetailClick);
+  $("def-detail").addEventListener("click", onOppDetailClick);
+  $("atk-detail").addEventListener("change", onOppDetailChange);
+  $("def-detail").addEventListener("change", onOppDetailChange);
+  $("atk-detail").addEventListener("input", onOppDetailInput);
+  $("def-detail").addEventListener("input", onOppDetailInput);
 
   [
     "weather",
@@ -719,11 +827,14 @@ async function main() {
   state.teams = loadTeams();
   state.slot = getActiveSlot();
   ensureMyIndex();
-  syncAtkFromMember();
+  syncTeamFromMember();
   renderTeamSelect();
   setEditSide("atk");
-  renderAttacker();
-  renderFoe();
+  document.querySelectorAll(".role-tab").forEach((btn) => {
+    const on = btn.dataset.role === state.teamRole;
+    btn.classList.toggle("on", on);
+  });
+  renderAll();
   updateResultsOpen();
   wire();
   recalc();

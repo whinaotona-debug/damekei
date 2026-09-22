@@ -7,8 +7,8 @@ import {
   emptyRanks,
   NATURES,
   STAT_LABELS,
-} from "./stats.js?v=20260920h";
-import { calculateDamage } from "./damage.js?v=20260920h";
+} from "./stats.js?v=20260922i";
+import { calculateDamage } from "./damage.js?v=20260922j";
 
 export const SHORT = { hp: "H", atk: "A", def: "B", spa: "C", spd: "D", spe: "S" };
 
@@ -35,36 +35,51 @@ export function formatNatureMod(stat, factor) {
   return "補正なし";
 }
 
-function moveIsPhysical(move) {
-  return move?.category === "物理";
-}
-
-function keyStatForMove(move, side) {
-  // side: 'offense' | 'defense'
-  const phys = moveIsPhysical(move);
+function keyStat(category, side) {
+  const phys = category === "物理";
   if (side === "offense") return phys ? "atk" : "spa";
   return phys ? "def" : "spd";
 }
 
-function rollsContain(result, observed) {
-  if (!result || result.error) return false;
+function moveCategory(move, category) {
+  if (category === "物理" || category === "特殊") return category;
+  return move?.category === "物理" ? "物理" : "特殊";
+}
+
+function rangeMatches(observed, lo, hi, exactList) {
   const { minDmg, maxDmg } = observed;
-  const lo = result.min ?? Math.min(...(result.rolls || [0]));
-  const hi = result.max ?? Math.max(...(result.rolls || [0]));
-  // 観測が単値なら、その値が乱数16通りに含まれるか
   if (minDmg === maxDmg) {
-    const rolls = result.rolls || [];
-    if (rolls.length) return rolls.includes(minDmg);
+    if (exactList?.length) return exactList.includes(minDmg);
     return minDmg >= lo && minDmg <= hi;
   }
-  // 観測が範囲なら、帯が重なるか
   return !(hi < minDmg || lo > maxDmg);
+}
+
+function rollsContain(result, observed) {
+  if (!result || result.error) return false;
+  // 生ダメージ（実戦の削り）と、ダメ計の回復差し引き表示のどちらでも照合する
+  const rolls = result.rolls || [];
+  const heal = Number(result.healPerTurn || 0);
+  const rawLo = rolls.length
+    ? Math.min(...rolls)
+    : Number(result.rawMin ?? result.min ?? 0);
+  const rawHi = rolls.length
+    ? Math.max(...rolls)
+    : Number(result.rawMax ?? result.max ?? 0);
+  if (rangeMatches(observed, rawLo, rawHi, rolls)) return true;
+  if (heal > 0) {
+    const adj = rolls.map((r) => Math.max(0, r - heal));
+    const adjLo = adj.length ? Math.min(...adj) : Number(result.min ?? 0);
+    const adjHi = adj.length ? Math.max(...adj) : Number(result.max ?? 0);
+    if (rangeMatches(observed, adjLo, adjHi, adj)) return true;
+  }
+  return false;
 }
 
 function baseInput(opts) {
   return {
-    attackerRanks: emptyRanks(),
-    defenderRanks: emptyRanks(),
+    attackerRanks: opts.attackerRanks || emptyRanks(),
+    defenderRanks: opts.defenderRanks || emptyRanks(),
     attackerStatus: opts.attackerStatus || "なし",
     defenderStatus: opts.defenderStatus || "なし",
     weather: opts.weather || "なし",
@@ -97,7 +112,9 @@ export function reverseOffense(opts) {
     foeItem = "なし",
     foeAbility = "",
   } = opts;
-  const atkKey = keyStatForMove(move, "offense");
+  const category = moveCategory(move, opts.category);
+  const calcMove = { ...move, category };
+  const atkKey = keyStat(category, "offense");
   const factors = [1.1, 1.0, 0.9];
   const hits = [];
 
@@ -110,7 +127,7 @@ export function reverseOffense(opts) {
         ...baseInput(opts),
         attackerPoke: foePoke,
         defenderPoke: myPoke,
-        move,
+        move: calcMove,
         attackerEvs: atkEvs,
         defenderEvs: myMember.evs || emptyEvs(),
         attackerNature: nature,
@@ -126,8 +143,8 @@ export function reverseOffense(opts) {
           ev,
           factor,
           nature,
-          min: result.min,
-          max: result.max,
+          min: result.rawMin ?? result.min,
+          max: result.rawMax ?? result.max,
           rolls: result.rolls,
         });
       }
@@ -149,7 +166,9 @@ export function reverseDefense(opts) {
     foeItem = "なし",
     foeAbility = "",
   } = opts;
-  const defKey = keyStatForMove(move, "defense");
+  const category = moveCategory(move, opts.category);
+  const calcMove = { ...move, category };
+  const defKey = keyStat(category, "defense");
   const factors = [1.1, 1.0, 0.9];
   const hits = [];
 
@@ -163,9 +182,9 @@ export function reverseDefense(opts) {
         defEvs[defKey] = defEv;
         const result = calculateDamage({
           ...baseInput(opts),
-          attackerPoke: myPoke,
-          defenderPoke: foePoke,
-          move,
+        attackerPoke: myPoke,
+        defenderPoke: foePoke,
+        move: calcMove,
           attackerEvs: myMember.evs || emptyEvs(),
           defenderEvs: defEvs,
           attackerNature: myMember.nature || "がんばりや",
@@ -182,8 +201,8 @@ export function reverseDefense(opts) {
             defKey,
             factor,
             nature,
-            min: result.min,
-            max: result.max,
+            min: result.rawMin ?? result.min,
+            max: result.rawMax ?? result.max,
             rolls: result.rolls,
           });
         }

@@ -8,20 +8,38 @@ import {
   modifyDefensiveDamage,
   seDamageMod,
   criticalBlocked,
-  criticalMultiplier,
   ignoresAbility,
-} from "./abilities.js?v=20260919e";
+} from "./abilities.js?v=20260922j";
 
 const LEVEL = 50;
 
-function pokeRound(n) {
-  // Pokemon games: round down at .5? Actually gen5+ uses floor toward -inf for most.
-  return Math.floor(n);
+/** 基礎ダメージ・乱数・タイプ相性・急所は切り捨て */
+function trunc(n) {
+  return n < 0 ? Math.ceil(n) : Math.floor(n);
 }
 
-function chainMod(value, modifier) {
-  // modifier as number like 1.5, 0.5, 1.2
-  return pokeRound(value * modifier);
+/** 倍率チェーンは五捨五超入（.5ちょうどは切り捨て、.5超は切り上げ） */
+function pokeRound(num) {
+  return num % 1 > 0.5 ? Math.ceil(num) : Math.floor(num);
+}
+
+function chainMods(mods) {
+  let m = 4096;
+  for (const mod of mods) {
+    if (mod !== 4096) m = (m * mod + 2048) >> 12;
+  }
+  return m;
+}
+
+function applyChain(value, mods) {
+  if (!mods?.length) return value;
+  return pokeRound((value * chainMods(mods)) / 4096);
+}
+
+/** チャンピオンズ実機: 最低乱数85%が出ない。86〜100の15段階 */
+const ROLL_COUNT = 15;
+function rollFactor(index) {
+  return 86 + index;
 }
 
 /** タイプ強化系持ち物 */
@@ -197,25 +215,6 @@ function resolvePower(move, ctx) {
       power = pokeRound((power || 120) * 0.5);
     }
   }
-  // じしん グラスフィールド
-  if (["じしん", "じならし"].includes(move.name) && field === "グラスフィールド") {
-    power = pokeRound((power || 100) * 0.5);
-  }
-
-  // フィールド威力 1.3
-  if (field === "エレキフィールド" && resolveMoveType(move, weather, field, attacker) === "でんき") {
-    power = pokeRound((power || 0) * 1.3);
-  }
-  if (field === "グラスフィールド" && resolveMoveType(move, weather, field, attacker) === "くさ") {
-    power = pokeRound((power || 0) * 1.3);
-  }
-  if (field === "サイコフィールド" && resolveMoveType(move, weather, field, attacker) === "エスパー") {
-    power = pokeRound((power || 0) * 1.3);
-  }
-  if (field === "ミストフィールド" && resolveMoveType(move, weather, field, attacker) === "ドラゴン") {
-    // mist reduces dragon power received — applied on damage side too; power reduction on defender field
-  }
-
   return power;
 }
 
@@ -315,10 +314,29 @@ function getAttackDefense(move, attacker, defender, critical) {
 }
 
 function baseDamage(power, a, d) {
-  // floor(floor(floor((2*Lv/5+2)*威力*A/D)/50)+2)
-  const step1 = pokeRound(((2 * LEVEL) / 5 + 2) * power * a / d);
-  const step2 = pokeRound(step1 / 50);
+  // floor(floor(floor(2*Lv/5+2) * 威力 * A) / D) / 50) + 2
+  const levelTerm = trunc((2 * LEVEL) / 5 + 2);
+  const step1 = trunc(trunc(levelTerm * power * a) / d);
+  const step2 = trunc(step1 / 50);
   return step2 + 2;
+}
+
+function applyType(damage, typeMult) {
+  let x = damage;
+  if (typeMult >= 1) {
+    let t = typeMult;
+    while (t >= 2 - 1e-9) {
+      x *= 2;
+      t /= 2;
+    }
+    return trunc(x);
+  }
+  let t = typeMult;
+  while (t <= 0.5 + 1e-9) {
+    x = trunc(x / 2);
+    t *= 2;
+  }
+  return x;
 }
 
 function isGrounded(poke, field) {
@@ -472,36 +490,49 @@ export function calculateDamage(input) {
     return { error: "この技は威力が状況依存、または非対応です", details, move };
   }
 
-  // 持ち物・技威力補正
+  // 威力側の4096補正は最後に1回だけ掛ける（いのちのたま・たつじんのおびはダメージ側）
+  const bpMods = [];
   const boostType = TYPE_BOOST_ITEMS[attackerItem];
   if (boostType && boostType === moveType) {
-    power = pokeRound(power * 1.2);
-    details.push(`持ち物補正(${attackerItem}): 威力×1.2 → ${power}`);
-  }
-  if (attackerItem === "ちからのハチマキ" && move.category === "物理") {
-    power = pokeRound(power * 1.1);
-    details.push("ちからのハチマキ: 威力×1.1");
-  }
-  if (attackerItem === "ものしりメガネ" && move.category === "特殊") {
-    power = pokeRound(power * 1.1);
-    details.push("ものしりメガネ: 威力×1.1");
-  }
-  if (attackerItem === "ノーマルジュエル" && moveType === "ノーマル") {
-    power = pokeRound(power * 1.3);
-    details.push("ノーマルジュエル: 威力×1.3");
-  }
-  if (attackerItem === "いのちのたま") {
-    power = pokeRound(power * 1.3);
-    details.push("いのちのたま: 威力×1.3");
+    bpMods.push(4915);
+    details.push(`持ち物補正(${attackerItem}): 威力×4915/4096`);
+  } else if (attackerItem === "ちからのハチマキ" && move.category === "物理") {
+    bpMods.push(4505);
+    details.push("ちからのハチマキ: 威力×4505/4096");
+  } else if (attackerItem === "ものしりメガネ" && move.category === "特殊") {
+    bpMods.push(4505);
+    details.push("ものしりメガネ: 威力×4505/4096");
+  } else if (attackerItem === "ノーマルジュエル" && moveType === "ノーマル") {
+    bpMods.push(5325);
+    details.push("ノーマルジュエル: 威力×5325/4096");
   }
   if (metronome > 1) {
-    const m = Math.min(2, 1 + (metronome - 1) * 0.2);
-    power = pokeRound(power * m);
-    details.push(`メトロノーム: 威力×${m}`);
+    const times = Math.max(1, Math.min(5, Math.floor(metronome) - 1));
+    bpMods.push(times >= 5 ? 8192 : 4096 + times * 819);
+    details.push(`メトロノーム: ${times}回目`);
   }
   if (helpBoost) {
-    power = pokeRound(power * 1.5);
+    bpMods.push(6144);
     details.push("てだすけ: 威力×1.5");
+  }
+  if (isGrounded(attacker, field)) {
+    if (
+      (field === "エレキフィールド" && moveType === "でんき") ||
+      (field === "グラスフィールド" && moveType === "くさ") ||
+      (field === "サイコフィールド" && moveType === "エスパー")
+    ) {
+      bpMods.push(5325);
+      details.push("フィールド: 威力×5325/4096");
+    }
+  }
+  if (isGrounded(defender, field)) {
+    if (
+      (field === "ミストフィールド" && moveType === "ドラゴン") ||
+      (field === "グラスフィールド" && ["じしん", "じならし"].includes(move.name))
+    ) {
+      bpMods.push(2048);
+      details.push("フィールド: 威力×0.5");
+    }
   }
 
   // 特性による威力・攻撃補正
@@ -524,14 +555,15 @@ export function calculateDamage(input) {
     }
     mod.notes.forEach((n) => details.push(n));
     if (attackerAbility === "アナライズ" && movingLast) {
-      power = pokeRound(power * 1.3);
-      details.push("アナライズ: 威力×1.3（後攻）");
+      bpMods.push(5325);
+      details.push("アナライズ: 威力×5325/4096（後攻）");
     }
     if (attackerAbility === "ちからずく") {
-      power = pokeRound(power * 1.3);
-      details.push("ちからずく: 威力×1.3");
+      bpMods.push(5325);
+      details.push("ちからずく: 威力×5325/4096");
     }
   }
+  if (bpMods.length) power = Math.max(1, applyChain(power, bpMods));
 
   details.push(`技威力: ${power}`);
 
@@ -543,10 +575,6 @@ export function calculateDamage(input) {
     typeMult =
       typeEffectiveness("かくとう", defender.types) *
       typeEffectiveness("ひこう", defender.types);
-  }
-  // ミストフィールド ドラゴン半減
-  if (field === "ミストフィールド" && moveType === "ドラゴン" && isGrounded(defender, field)) {
-    typeMult *= 0.5;
   }
 
   details.push(`タイプ相性: ×${typeMult}（${effectivenessLabel(typeMult)}）`);
@@ -567,10 +595,12 @@ export function calculateDamage(input) {
     };
   }
 
-  // たつじんのおび
+  // たつじんのおび・いのちのたまはダメージ側の finalMods
   if (attackerItem === "たつじんのおび" && typeMult > 1) {
-    power = pokeRound(power * 1.2);
-    details.push("たつじんのおび: 威力×1.2");
+    details.push("たつじんのおび: ダメージ×4915/4096");
+  }
+  if (attackerItem === "いのちのたま") {
+    details.push("いのちのたま: ダメージ×5324/4096");
   }
 
   const forceCrit =
@@ -671,45 +701,68 @@ export function calculateDamage(input) {
       hpRatio: attackerHpRatio,
     });
     const a = atkMod.attackStat;
-    let dmg = baseDamage(hitPower, a, d);
+    let dAdj = d;
+    if (
+      defender.ability === "ファーコート" &&
+      !ignoresAbility(attackerAbility) &&
+      (move.category === "物理" || move.name === "ボディプレス" || move.name === "イカサマ")
+    ) {
+      dAdj = pokeRound(dAdj * 2);
+    }
+    if (
+      defender.ability === "くさのけがわ" &&
+      !ignoresAbility(attackerAbility) &&
+      field === "グラスフィールド" &&
+      (move.category === "物理" || move.name === "ボディプレス" || move.name === "イカサマ")
+    ) {
+      dAdj = pokeRound((dAdj * 3) / 2);
+    }
+    let dmg = baseDamage(hitPower, a, dAdj);
     if (atkWeather === "はれ") {
-      if (moveType === "ほのお") dmg = chainMod(dmg, 1.5);
-      if (moveType === "みず") dmg = chainMod(dmg, 0.5);
+      if (moveType === "ほのお") dmg = pokeRound((dmg * 6144) / 4096);
+      if (moveType === "みず") dmg = pokeRound((dmg * 2048) / 4096);
     } else if (atkWeather === "あめ") {
-      if (moveType === "みず") dmg = chainMod(dmg, 1.5);
-      if (moveType === "ほのお") dmg = chainMod(dmg, 0.5);
+      if (moveType === "みず") dmg = pokeRound((dmg * 6144) / 4096);
+      if (moveType === "ほのお") dmg = pokeRound((dmg * 2048) / 4096);
     }
-    if (isCrit) dmg = chainMod(dmg, criticalMultiplier(attackerAbility));
+    if (isCrit) dmg = trunc(dmg * 1.5);
     const stab = stabMultiplier(attacker.types, moveType, attackerAbility);
-    let x = pokeRound((dmg * (85 + rollIndex)) / 100);
-    x = chainMod(x, stab);
-    x = chainMod(x, typeMult);
-    const seMod = seDamageMod(typeMult, defenderAbility, ignoresAbility(attackerAbility), attackerAbility);
-    if (seMod !== 1) x = chainMod(x, seMod);
-    x = chainMod(x, defMod.mult);
+    let x = trunc((dmg * rollFactor(rollIndex)) / 100);
+    if (stab !== 1) x = pokeRound((x * (stab === 2 ? 8192 : 6144)) / 4096);
+    x = applyType(x, typeMult);
     if (attackerStatus === "やけど" && move.category === "物理" && move.name !== "からげんき" && attackerAbility !== "こんじょう") {
-      x = chainMod(x, 0.5);
+      x = trunc(x / 2);
     }
-    if (wallActive && !isCrit && defenderAbility !== "すりぬけ") x = pokeRound((x * 2) / 3);
+    const finalMods = [];
+    if (seDamageMod(typeMult, defenderAbility, ignoresAbility(attackerAbility), attackerAbility) !== 1) {
+      finalMods.push(3072);
+    }
+    if (defMod.mult !== 1) {
+      finalMods.push(Math.round(defMod.mult * 4096));
+    }
+    if (wallActive && !isCrit && defenderAbility !== "すりぬけ") {
+      finalMods.push(2048);
+    }
+    if (isCrit && attackerAbility === "スナイパー") finalMods.push(6144);
+    if (attackerItem === "たつじんのおび" && typeMult > 1) finalMods.push(4915);
+    if (attackerItem === "いのちのたま") finalMods.push(5324);
     let berryUsed = false;
     if (berryActive) {
       const berry = RESIST_BERRIES[defenderItem];
-      if (berry && berry === moveType && typeMult > 1) {
-        x = chainMod(x, 0.5);
-        berryUsed = true;
-      }
-      if (defenderItem === "ホズのみ" && moveType === "ノーマル") {
-        x = chainMod(x, 0.5);
+      if ((berry && berry === moveType && typeMult > 1) || (defenderItem === "ホズのみ" && moveType === "ノーマル")) {
+        finalMods.push(2048);
         berryUsed = true;
       }
     }
+    x = applyChain(x, finalMods);
     let damage = Math.max(1, x);
     const notes = [...defMod.notes, ...atkMod.notes];
+    if (dAdj !== d && defender.ability === "くさのけがわ") notes.push("くさのけがわ: 防御×1.5");
     if (sturdyActive && damage >= defStats.hp) {
       damage = defStats.hp - 1;
       notes.push(hasFocusSash && !hasSturdyAbility ? "きあいのタスキ: HP1で耐えた" : "がんじょう: HP1で耐えた");
     }
-    return { damage, a, d, atkName, defName, stab, notes, blocked: false, berryUsed };
+    return { damage, a, d: dAdj, atkName, defName, stab, notes, blocked: false, berryUsed };
   }
 
   /**
@@ -732,7 +785,7 @@ export function calculateDamage(input) {
     } = opts;
     const out = [];
     const disguiseChip = Math.floor(defStats.hp / 8);
-    for (let rollIndex = 0; rollIndex <= 15; rollIndex++) {
+    for (let rollIndex = 0; rollIndex < ROLL_COUNT; rollIndex++) {
       let sum = 0;
       let stacks = startingStaminaStacks;
       let disguiseBroken = startDisguiseBroken || !hasDisguise;
@@ -838,10 +891,10 @@ export function calculateDamage(input) {
   details.push(
     `天候: ${weather}${attackerAbility === "メガソーラー" ? "（攻撃側は晴れ扱い）" : ""} / フィールド: ${field}`
   );
-  if (wallActive) details.push("壁: あり（×2/3）");
+  if (wallActive) details.push("壁: あり（シングル ×1/2）");
   if (attackerItem === "こだわりハチマキ") details.push("こだわりハチマキ: 攻撃×1.5");
   if (attackerItem === "こだわりメガネ") details.push("こだわりメガネ: 特攻×1.5");
-  details.push("乱数: 0.85〜1.00");
+  details.push("乱数: 0.86〜1.00（15段階）");
   if (hits.max > 1) details.push(`連続攻撃: ${hits.min}〜${hits.max}回（表示は${hits.max}回命中想定）`);
 
   let normalPack = null;
@@ -1098,7 +1151,7 @@ function analyzeKoChance({ hp, stamina, rollsForMoveUse, maxTurns = 8 }) {
 
   // 1発目の min/max でラベル用
   const firstMin = turnRolls[0][0];
-  const firstMax = turnRolls[0][15];
+  const firstMax = turnRolls[0][turnRolls[0].length - 1];
 
   for (let n = 1; n <= maxTurns; n++) {
     const { chance, guaranteed, possible } = koChanceInNTurns(turnRolls, hp, n);
@@ -1128,9 +1181,8 @@ function analyzeKoChance({ hp, stamina, rollsForMoveUse, maxTurns = 8 }) {
   return { text: label, chance: null, hits: null, guaranteed: false, note: null };
 }
 
-/** n ターン分の乱数組み合わせで倒せる割合（各ターン16通り、独立） */
+/** n ターン分の乱数組み合わせで倒せる割合（各ターンの乱数は独立） */
 function koChanceInNTurns(turnRolls, hp, n) {
-  // 再帰で全組み合わせは 16^n。n<=4 は 65536 まで許容、それ以上は近似
   if (n <= 4) {
     let ko = 0;
     let total = 0;
@@ -1140,7 +1192,8 @@ function koChanceInNTurns(turnRolls, hp, n) {
         if (sum >= hp) ko += 1;
         return;
       }
-      for (let i = 0; i < 16; i++) {
+      const len = turnRolls[turn].length;
+      for (let i = 0; i < len; i++) {
         rec(turn + 1, sum + turnRolls[turn][i]);
       }
     }
@@ -1153,12 +1206,12 @@ function koChanceInNTurns(turnRolls, hp, n) {
     };
   }
 
-  // 近似: 各ターンの期待値累積ではなく、モンテカルロ風に全最大/最小で判定
   let minSum = 0;
   let maxSum = 0;
   for (let t = 0; t < n; t++) {
-    minSum += turnRolls[t][0];
-    maxSum += turnRolls[t][15];
+    const rolls = turnRolls[t];
+    minSum += rolls[0];
+    maxSum += rolls[rolls.length - 1];
   }
   if (minSum >= hp) return { chance: 1, guaranteed: true, possible: true };
   if (maxSum < hp) return { chance: 0, guaranteed: false, possible: false };

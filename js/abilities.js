@@ -255,13 +255,10 @@ export function modifyDefensiveDamage({
     notes.push("すいほう: ほのお×2");
   }
   if (defAb === "ファーコート" && move.category === "物理") {
-    // doubles Defense in getAttackDefense instead ideally; as damage approx ×0.5
-    m *= 0.5;
-    notes.push("ファーコート: 物理×0.5");
+    notes.push("ファーコート: 防御×2");
   }
   if (defAb === "くさのけがわ" && weather === "グラスフィールド" && move.category === "物理") {
-    m *= 0.5;
-    notes.push("くさのけがわ: 物理×0.5");
+    notes.push("くさのけがわ: グラスフィールドで防御×1.5");
   }
   if (defAb === "すりぬけ") {
     // ignores screens/sub - handled elsewhere

@@ -1,7 +1,7 @@
 /**
  * 対戦シミュ — TurnResolver / AI（Phase 2）
  */
-import { calculateDamage } from "../damage.js?v=20260922c";
+import { calculateDamage } from "../damage.js?v=20260922j";
 import { emptyRanks } from "../stats.js?v=20260922c";
 import {
   activeOf,
