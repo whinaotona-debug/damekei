@@ -9,11 +9,11 @@
   <title>ダメ計 | 構築から攻撃</title>
   <link rel="icon" type="image/png" href="./icons/icon.png" />
   <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
-  <link rel="stylesheet" href="./css/style.css?v=20260922c" />
-  <link rel="stylesheet" href="./css/hub.css?v=20260922c" />
-  <link rel="stylesheet" href="./css/type-icons.css?v=20260922c" />
+  <link rel="stylesheet" href="./css/style.css?v=20260922h" />
+  <link rel="stylesheet" href="./css/hub.css?v=20260922h" />
+  <link rel="stylesheet" href="./css/type-icons.css?v=20260922h" />
 </head>
-<body class="tools-page">
+<body class="tools-page calc-page">
   <div class="hub-app">
     <header class="app-header">
       <a class="app-icon-link" href="./index.html" title="ホーム">
@@ -26,85 +26,99 @@
       <nav class="hub-nav">
         <a href="./index.html" class="nav-home">ホーム</a>
         <a href="./dame.html" aria-current="page">ダメ計</a>
-<div class="result-mini" id="result-mini">-</div>
+        <div class="result-mini" id="result-mini">-</div>
       </nav>
     </header>
 
-    <div class="team-toolbar">
-      <label class="field-label" for="team-slot">攻撃側の構築</label>
-      <select id="team-slot" aria-label="構築選択"></select>
-      <button type="button" class="icon-btn" id="btn-edit-team">構築を編集</button>
-    </div>
-
     <div class="calc-layout">
-      <section class="calc-attacker">
-        <h2>自分（構築から1匹）</h2>
-        <div class="rev-mine-grid" id="my-pick"></div>
-        <div id="atk-detail" class="poke-detail"></div>
-
-        <div class="mid-row">
-          <button type="button" class="selector-btn" id="move-btn">
-            <div class="k">使う技</div>
-            <div class="title">技を選択</div>
-          </button>
+      <div class="calc-main">
+        <div class="team-toolbar">
+          <label class="field-label" for="team-slot">攻撃側の構築</label>
+          <select id="team-slot" aria-label="構築選択"></select>
+          <button type="button" class="icon-btn" id="btn-edit-team">構築を編集</button>
         </div>
 
-        <h2 style="margin-top:12px">相手</h2>
-        <div class="poke-slot foe-slot" id="foe-slot" tabindex="0" role="button">相手を選ぶ</div>
-        <div id="foe-detail" class="poke-detail" hidden></div>
+        <section class="calc-panel">
+          <div class="side-tabs" role="tablist">
+            <button type="button" class="side-tab on" data-side="atk" role="tab" aria-selected="true">攻撃側</button>
+            <button type="button" class="side-tab" data-side="def" role="tab" aria-selected="false">防御側</button>
+          </div>
 
-        <div class="field-compact">
-          <label>天候<select id="weather">
-            <option value="なし">なし</option>
-            <option value="はれ">晴れ</option>
-            <option value="あめ">雨</option>
-            <option value="すなあらし">砂</option>
-            <option value="ゆき">雪</option>
-          </select></label>
-          <label>場<select id="field">
-            <option value="なし">なし</option>
-            <option value="エレキフィールド">エレキ</option>
-            <option value="グラスフィールド">グラス</option>
-            <option value="サイコフィールド">サイコ</option>
-            <option value="ミストフィールド">ミスト</option>
-          </select></label>
-          <label>異常<select id="atk-status">
-            <option value="なし">なし</option>
-            <option value="やけど">やけど</option>
-            <option value="まひ">まひ</option>
-            <option value="どく">どく</option>
-            <option value="もうどく">もうどく</option>
-          </select></label>
-          <label>まきびし<select id="spikes">
-            <option value="0">0</option>
-            <option value="1">1</option>
-            <option value="2">2</option>
-            <option value="3">3</option>
-          </select></label>
+          <div id="side-atk" class="side-pane">
+            <h2 class="sr-only">攻撃側</h2>
+            <div class="rev-mine-grid" id="my-pick"></div>
+            <div id="atk-detail" class="poke-detail"></div>
+            <div class="mid-row">
+              <button type="button" class="selector-btn" id="move-btn">
+                <div class="k">使う技</div>
+                <div class="title">技を選択</div>
+              </button>
+            </div>
+          </div>
+
+          <div id="side-def" class="side-pane" hidden>
+            <h2 class="sr-only">防御側</h2>
+            <div class="poke-slot foe-slot" id="foe-slot" tabindex="0" role="button">相手を選ぶ</div>
+            <div id="foe-detail" class="poke-detail" hidden></div>
+          </div>
+        </section>
+
+        <section class="calc-panel field-panel">
+          <h2>場・条件</h2>
+          <div class="field-compact">
+            <label>天候<select id="weather">
+              <option value="なし">なし</option>
+              <option value="はれ">晴れ</option>
+              <option value="あめ">雨</option>
+              <option value="すなあらし">砂</option>
+              <option value="ゆき">雪</option>
+            </select></label>
+            <label>場<select id="field">
+              <option value="なし">なし</option>
+              <option value="エレキフィールド">エレキ</option>
+              <option value="グラスフィールド">グラス</option>
+              <option value="サイコフィールド">サイコ</option>
+              <option value="ミストフィールド">ミスト</option>
+            </select></label>
+            <label>異常<select id="atk-status">
+              <option value="なし">なし</option>
+              <option value="やけど">やけど</option>
+              <option value="まひ">まひ</option>
+              <option value="どく">どく</option>
+              <option value="もうどく">もうどく</option>
+            </select></label>
+            <label>まきびし<select id="spikes">
+              <option value="0">0</option>
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+            </select></label>
+          </div>
+          <div class="check-list compact">
+            <label><input type="checkbox" id="critical" />急所</label>
+            <label><input type="checkbox" id="reflect" />リフレク</label>
+            <label><input type="checkbox" id="lightScreen" />光の壁</label>
+            <label><input type="checkbox" id="auroraVeil" />ベール</label>
+            <label><input type="checkbox" id="stealthRock" />ステロ</label>
+            <label><input type="checkbox" id="leechSeed" />やどりぎ</label>
+            <label><input type="checkbox" id="burnChip" />やけどD</label>
+            <label><input type="checkbox" id="poisonChip" />どくD</label>
+            <label><input type="checkbox" id="gravity" />重力</label>
+            <label><input type="checkbox" id="helpBoost" />てだすけ</label>
+            <label><input type="checkbox" id="movingLast" />後攻(がんせき)</label>
+          </div>
+        </section>
+      </div>
+
+      <aside class="calc-results" id="calc-results">
+        <div class="calc-results-head">
+          <h2 id="results-title">ダメージ結果</h2>
+          <button type="button" class="icon-btn results-toggle" id="btn-results-toggle" aria-label="結果を開閉">結果</button>
         </div>
-
-        <div class="check-list compact">
-          <label><input type="checkbox" id="critical" />急所</label>
-          <label><input type="checkbox" id="reflect" />リフレク</label>
-          <label><input type="checkbox" id="lightScreen" />光の壁</label>
-          <label><input type="checkbox" id="auroraVeil" />ベール</label>
-          <label><input type="checkbox" id="stealthRock" />ステロ</label>
-          <label><input type="checkbox" id="leechSeed" />やどりぎ</label>
-          <label><input type="checkbox" id="burnChip" />やけどD</label>
-          <label><input type="checkbox" id="poisonChip" />どくD</label>
-          <label><input type="checkbox" id="gravity" />重力</label>
-          <label><input type="checkbox" id="helpBoost" />てだすけ</label>
-          <label><input type="checkbox" id="hpNotFull" />相手HP非満タン</label>
-          <label><input type="checkbox" id="movingLast" />後攻(がんせき)</label>
-        </div>
-      </section>
-
-      <section class="calc-results">
-        <h2 id="results-title">ダメージ結果</h2>
         <div class="bulk-results" id="bulk-results">
-          <p class="hint">構築の1匹・技・相手を選ぶとダメージが出ます</p>
+          <p class="hint">攻撃側・技・防御側を選ぶとダメージが出ます</p>
         </div>
-      </section>
+      </aside>
     </div>
   </div>
 
@@ -118,6 +132,6 @@
     </div>
   </div>
 
-  <script type="module" src="./js/calc-app.js?v=20260922a"></script>
+  <script type="module" src="./js/calc-app.js?v=20260922h"></script>
 </body>
 </html>

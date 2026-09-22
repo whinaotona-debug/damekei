@@ -450,17 +450,192 @@ html[data-ui="ipad"] .member-grid {
 .calc-layout {
   display: grid;
   gap: 10px;
-}
-@media (min-width: 768px) {
-  .calc-layout {
-    grid-template-columns: minmax(280px, 380px) 1fr;
-    align-items: start;
-  }
-}
-html[data-ui="ipad"] .calc-layout {
-  grid-template-columns: minmax(280px, 380px) 1fr;
   align-items: start;
 }
+.calc-main {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+.calc-panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px;
+  box-shadow: var(--shadow);
+}
+.side-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.side-tab {
+  min-height: var(--ui-tap);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+.side-tab.on {
+  border-color: var(--accent);
+  background: #e8f3f8;
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  border: 0;
+}
+.stat-edit-block {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--line);
+}
+.stat-edit-label {
+  font-size: var(--ui-small);
+  font-weight: 800;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.stat-edit-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.stat-edit-cell {
+  display: grid;
+  gap: 4px;
+}
+.stat-edit-name {
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.mult-group,
+.rank-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.mult-btn,
+.rank-btn {
+  min-width: 40px;
+  min-height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0 8px;
+}
+.mult-btn.on {
+  border-color: var(--accent);
+  background: #e8f3f8;
+  color: var(--accent);
+}
+.rank-val {
+  min-width: 2.2rem;
+  text-align: center;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.rank-val.up { color: #c62828; }
+.rank-val.down { color: #1565c0; }
+.hp-edit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.hp-edit input {
+  width: 5.5rem;
+  min-height: 36px;
+  font-size: 16px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.hp-max {
+  font-weight: 700;
+  color: var(--muted);
+}
+
+/* PC: 結果を右に固定 */
+@media (min-width: 768px) {
+  .calc-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
+  }
+  html[data-ui="ipad"] .calc-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
+  }
+  .calc-results {
+    position: sticky;
+    top: 8px;
+    align-self: start;
+    max-height: calc(100dvh - 16px);
+    overflow: auto;
+  }
+  .results-toggle {
+    display: none;
+  }
+}
+
+/* スマホ: 結果は下から出る固定パネル */
+@media (max-width: 767px) {
+  .calc-page .hub-app {
+    padding-bottom: calc(28vh + 16px);
+  }
+  .calc-results {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 35;
+    max-height: 42vh;
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -10px 28px rgba(0, 0, 0, 0.18);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  body.results-collapsed .calc-results {
+    max-height: 52px;
+  }
+  body.results-collapsed .calc-page .hub-app {
+    padding-bottom: 64px;
+  }
+  .calc-results-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 10px 0;
+    flex: 0 0 auto;
+  }
+  .calc-results-head h2 {
+    margin: 0;
+    border: none;
+    padding: 0;
+  }
+  .bulk-results {
+    overflow: auto;
+    padding: 8px 10px 12px;
+    flex: 1;
+    min-height: 0;
+  }
+  body.results-collapsed .bulk-results {
+    display: none;
+  }
+}
+
 .calc-attacker,
 .calc-results {
   background: var(--panel);
@@ -469,12 +644,15 @@ html[data-ui="ipad"] .calc-layout {
   padding: 10px;
   box-shadow: var(--shadow);
 }
-.calc-attacker h2,
-.calc-results h2 {
+.calc-results-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.calc-results-head h2 {
   margin: 0 0 8px;
-  font-size: 1rem;
-  border-bottom: 2px solid var(--accent);
-  padding-bottom: 4px;
+  flex: 1;
 }
 .field-compact {
   display: grid;

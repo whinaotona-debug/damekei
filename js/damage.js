@@ -1,5 +1,5 @@
 import { typeEffectiveness, effectivenessLabel } from "./types.js?v=20260919e";
-import { applyRank, calcAllStats } from "./stats.js?v=20260919e";
+import { applyRank, calcAllStats, calcAllStatsFromMults } from "./stats.js?v=20260922h";
 import {
   isProteanLike,
   effectiveWeatherForAttacker,
@@ -360,6 +360,9 @@ export function calculateDamage(input) {
     hpNotFull = false,
     movingLast = false,
     attackerHpRatio = 1,
+    attackerNatureMults = null,
+    defenderNatureMults = null,
+    defenderCurrentHp = null,
   } = input;
 
   const details = [];
@@ -370,8 +373,19 @@ export function calculateDamage(input) {
     return { error: "変化技のためダメージはありません", details, move };
   }
 
-  const atkStats = calcAllStats(attackerPoke.baseStats, attackerEvs, attackerNature);
-  const defStats = calcAllStats(defenderPoke.baseStats, defenderEvs, defenderNature);
+  const atkStats = attackerNatureMults
+    ? calcAllStatsFromMults(attackerPoke.baseStats, attackerEvs, attackerNatureMults)
+    : calcAllStats(attackerPoke.baseStats, attackerEvs, attackerNature);
+  const defStats = defenderNatureMults
+    ? calcAllStatsFromMults(defenderPoke.baseStats, defenderEvs, defenderNatureMults)
+    : calcAllStats(defenderPoke.baseStats, defenderEvs, defenderNature);
+
+  const hpMax = defStats.hp;
+  const hp =
+    defenderCurrentHp != null
+      ? Math.max(1, Math.min(hpMax, Math.floor(Number(defenderCurrentHp) || hpMax)))
+      : hpMax;
+  const effectiveHpNotFull = hpNotFull || hp < hpMax;
 
   const attacker = {
     name: attackerPoke.name,
@@ -547,7 +561,8 @@ export function calculateDamage(input) {
       effectiveness: effectivenessLabel(0),
       typeMult: 0,
       details,
-      defenderHp: defStats.hp,
+      defenderHp: hp,
+      defenderHpMax: hpMax,
       moveType,
     };
   }
@@ -580,7 +595,7 @@ export function calculateDamage(input) {
   const hasMultiscale =
     (defenderAbility === "マルチスケイル" || defenderAbility === "ファントムガード") &&
     !ignoresAbility(attackerAbility) &&
-    !hpNotFull;
+    !effectiveHpNotFull;
   if (hasMultiscale) {
     details.push(
       `防御側 ${defenderAbility}: HP満タンの1発目のみ×0.5（2発目以降は通常・食べ残しで満タンに戻っても計算上は再発動しない）`
@@ -588,8 +603,8 @@ export function calculateDamage(input) {
   }
 
   const hasSturdyAbility =
-    defenderAbility === "がんじょう" && !ignoresAbility(attackerAbility) && !hpNotFull;
-  const hasFocusSash = defenderItem === "きあいのタスキ" && !hpNotFull;
+    defenderAbility === "がんじょう" && !ignoresAbility(attackerAbility) && !effectiveHpNotFull;
+  const hasFocusSash = defenderItem === "きあいのタスキ" && !effectiveHpNotFull;
   const hasSturdy = hasSturdyAbility || hasFocusSash;
   if (hasSturdyAbility) {
     details.push("防御側 がんじょう: HP満タンからのひんし技をHP1で耐える（1回）");
@@ -615,7 +630,7 @@ export function calculateDamage(input) {
     const {
       firstHitOfBattle = true,
       isCrit = false,
-      hpFull = !hpNotFull,
+      hpFull = !effectiveHpNotFull,
       berryActive = true,
       sturdyActive = false,
     } = opts;
@@ -751,8 +766,10 @@ export function calculateDamage(input) {
     return out;
   }
 
-  const hp = defStats.hp;
-  const healPerTurn = endOfTurnHealAmount(defender, hp);
+  if (hp < hpMax) {
+    details.push(`防御側 HP ${hp}/${hpMax}（削れた状態）`);
+  }
+  const healPerTurn = endOfTurnHealAmount(defender, hpMax);
   if (healPerTurn > 0) {
     details.push(`回復込み表示: たべのこし等 −${healPerTurn}/ターン（参考ダメ計と同じ）`);
   }
@@ -891,6 +908,7 @@ export function calculateDamage(input) {
     typeMult,
     details,
     defenderHp: hp,
+    defenderHpMax: hpMax,
     moveType,
     stab: sample.stab,
     power,

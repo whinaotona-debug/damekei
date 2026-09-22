@@ -277,6 +277,28 @@ html[data-ui="ipad"] .rev-mine-grid {
   font: inherit;
   font-weight: 700;
   cursor: pointer;
+  min-width: 0;
+}
+.rev-mine-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  writing-mode: horizontal-tb;
+}
+.rev-mine-text strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.9rem;
+}
+.rev-mine-text .s {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .rev-mine.active {
   border-color: var(--accent);

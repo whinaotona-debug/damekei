@@ -111,6 +111,42 @@ export function emptyRanks() {
   return { atk: 0, def: 0, spa: 0, spd: 0, spe: 0, accuracy: 0, evasion: 0 };
 }
 
+/** 性格補正を倍率で持つ（0.9 / 1 / 1.1） */
+export function emptyNatureMults() {
+  return { atk: 1, def: 1, spa: 1, spd: 1, spe: 1 };
+}
+
+export function natureMultsFromName(natureName) {
+  const m = emptyNatureMults();
+  for (const k of Object.keys(m)) {
+    m[k] = natureFactor(natureName, k);
+  }
+  return m;
+}
+
+export function clampNatureMult(v) {
+  const n = Number(v);
+  if (n <= 0.95) return 0.9;
+  if (n >= 1.05) return 1.1;
+  return 1;
+}
+
+export function calcAllStatsFromMults(baseStats, evs, natureMults) {
+  const mults = natureMults || emptyNatureMults();
+  const out = {};
+  for (const k of STAT_KEYS) {
+    const e = Math.max(0, Math.min(EV_MAX_PER, (evs && evs[k]) || 0));
+    const base = baseStats[k] || 0;
+    if (k === "hp") {
+      out[k] = base + 75 + e;
+    } else {
+      const f = clampNatureMult(mults[k] ?? 1);
+      out[k] = Math.floor((base + 20 + e) * f);
+    }
+  }
+  return out;
+}
+
 export function totalEv(evs) {
   return STAT_KEYS.reduce((s, k) => s + (evs[k] || 0), 0);
 }
