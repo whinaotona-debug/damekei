@@ -451,14 +451,53 @@ body.tools-page {
   display: grid;
   gap: 10px;
 }
-.battle-arena {
-  display: grid;
-  gap: 10px;
-  background: linear-gradient(180deg, #7eb6d9 0%, #c8e4f0 42%, #8fbc6b 42%, #6a9a4e 100%);
-  border-radius: 14px;
-  padding: 12px;
-  border: 1px solid var(--line);
+
+/* 試合中: 画面いっぱい */
+body.battle-live {
   overflow: hidden;
+}
+body.battle-live .hub-app.battle-live-app {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+body.battle-live .app-header {
+  display: none;
+}
+#fight-panel.battle-fight {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+#fight-panel[hidden] {
+  display: none !important;
+}
+.battle-stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+.battle-arena {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto 1fr 1fr;
+  gap: 8px;
+  background:
+    radial-gradient(ellipse at 50% 30%, rgba(255,255,255,.25), transparent 55%),
+    linear-gradient(180deg, #5a9fd4 0%, #9ec9e8 38%, #7aaa55 38%, #4f7f38 100%);
+  border-radius: 0;
+  padding: 10px 12px 8px;
+  border: none;
+  overflow: hidden;
+  position: relative;
 }
 .battle-field-status {
   display: grid;
@@ -470,12 +509,13 @@ body.tools-page {
   font-size: 0.78rem;
 }
 .battle-side {
-  background: rgba(255, 255, 255, 0.88);
-  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(255,255,255,.35);
   border-radius: 12px;
-  padding: 10px;
-  box-shadow: var(--shadow);
+  padding: 10px 12px;
+  box-shadow: 0 6px 18px rgba(0,0,0,.12);
   transition: transform 0.12s ease;
+  align-self: stretch;
 }
 .battle-side.foe { border-color: #c45c5c; }
 .battle-side.player { border-color: var(--accent); }
@@ -491,8 +531,9 @@ body.tools-page {
 .battle-mon {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   justify-content: space-between;
+  height: 100%;
 }
 .battle-side.foe .battle-mon { flex-direction: row; }
 .battle-side.player .battle-mon { flex-direction: row; }
@@ -502,10 +543,11 @@ body.tools-page {
   justify-content: space-between;
   gap: 8px;
   align-items: baseline;
+  font-size: 1.05rem;
 }
 .battle-hp-text {
   font-variant-numeric: tabular-nums;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   color: var(--muted);
 }
 .battle-meta {
@@ -518,13 +560,20 @@ body.tools-page {
 }
 .battle-sprite {
   flex: 0 0 auto;
-  width: 96px;
-  height: 96px;
+  width: 120px;
+  height: 120px;
   display: grid;
   place-items: center;
 }
+.battle-sprite .poke-img {
+  width: 120px !important;
+  height: 120px !important;
+}
 .battle-sprite.atk {
-  animation: battle-atk 0.28s ease;
+  animation: battle-atk 0.45s ease;
+}
+.battle-sprite.mega-flash {
+  animation: battle-mega 0.7s ease;
 }
 .battle-sprite.faint {
   opacity: 0.35;
@@ -532,9 +581,37 @@ body.tools-page {
   transition: opacity 0.4s ease;
 }
 @keyframes battle-atk {
-  0% { transform: translateY(0); }
-  40% { transform: translateY(-10px) scale(1.05); }
-  100% { transform: translateY(0); }
+  0% { transform: translateY(0) scale(1); }
+  35% { transform: translateY(-18px) scale(1.08); }
+  100% { transform: translateY(0) scale(1); }
+}
+@keyframes battle-mega {
+  0% { transform: scale(0.85); filter: brightness(2); }
+  50% { transform: scale(1.15); filter: brightness(1.4) drop-shadow(0 0 12px #f0c); }
+  100% { transform: scale(1); filter: none; }
+}
+.battle-move-banner {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  transform: translate(-50%, -50%) scale(0.92);
+  background: rgba(12, 18, 28, 0.88);
+  color: #fff;
+  padding: 12px 18px;
+  border-radius: 10px;
+  font-weight: 800;
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 5;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  text-align: center;
+  max-width: 90%;
+}
+.battle-move-banner.show {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
 }
 .battle-party-dots {
   display: flex;
@@ -552,7 +629,7 @@ body.tools-page {
 .party-dot.ready { background: #5cba7a; }
 .party-dot.out { background: #c9d0d6; opacity: 0.5; }
 .hp-bar {
-  height: 12px;
+  height: 14px;
   background: #dde5ea;
   border-radius: 999px;
   overflow: hidden;
@@ -565,11 +642,31 @@ body.tools-page {
   transition: width 0.35s ease;
 }
 .hp-bar.low > span { background: linear-gradient(90deg, #a33b3b, #e07a7a); }
+
+.battle-hud {
+  flex: 0 0 auto;
+  display: grid;
+  gap: 0;
+  background: #101820;
+}
+.battle-log {
+  background: rgba(16, 24, 32, 0.96);
+  color: #e8eef2;
+  border-radius: 0;
+  padding: 10px 14px;
+  max-height: min(22vh, 180px);
+  overflow: auto;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  border-top: 1px solid rgba(255,255,255,.08);
+}
+.battle-log div { margin-bottom: 4px; }
 .battle-cmd {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 10px;
+  background: #16202a;
+  border: none;
+  border-radius: 0;
+  padding: 10px 12px 14px;
+  border-top: 1px solid rgba(255,255,255,.06);
 }
 .battle-actions {
   display: grid;
@@ -587,8 +684,8 @@ body.tools-page {
   text-align: center;
   padding: 16px;
 }
-.battle-result.win { color: #1f7a3a; }
-.battle-result.lose { color: #a33b3b; }
+.battle-result.win { color: #5cba7a; }
+.battle-result.lose { color: #e07a7a; }
 .mega-btn {
   grid-column: 1 / -1;
   background: linear-gradient(90deg, #6b2d8b, #c45c9a);
@@ -596,17 +693,13 @@ body.tools-page {
   border: none;
   font-weight: 800;
 }
-.battle-log {
-  background: #1a2430;
-  color: #e8eef2;
-  border-radius: var(--radius);
-  padding: 10px;
-  max-height: 240px;
-  overflow: auto;
-  font-size: 0.82rem;
-  line-height: 1.4;
+.mega-btn.on {
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px #c45c9a;
 }
-.battle-log div { margin-bottom: 4px; }
+body.battle-busy .battle-cmd {
+  pointer-events: none;
+  opacity: 0.55;
+}
 .select-row {
   display: flex;
   flex-wrap: wrap;
@@ -636,4 +729,19 @@ body.tools-page {
   cursor: default;
   background: #f4f7fa;
   min-width: 140px;
+}
+
+@media (min-width: 768px) {
+  .battle-sprite {
+    width: 160px;
+    height: 160px;
+  }
+  .battle-sprite .poke-img {
+    width: 160px !important;
+    height: 160px !important;
+  }
+  .battle-log {
+    max-height: min(26vh, 220px);
+    font-size: 1rem;
+  }
 }

@@ -56,14 +56,37 @@ export function performMegaEvolve(battle, sideKey, pokemonList, formName) {
   battle.megaUsed = battle.megaUsed || { player: false, foe: false };
   battle.megaUsed[sideKey] = true;
 
-  pushLog(battle, `${oldName} は メガシンカ して ${form.name} になった！`);
-  emit(battle, "mega", { side: sideKey, species: form.name });
+  const who = sideKey === "foe" ? "相手の " : "";
+  pushLog(battle, `${who}${oldName} は`);
+  pushLog(battle, `${form.name} に メガシンカした！`);
+  emit(battle, "mega", { side: sideKey, species: form.name, from: oldName });
 
-  // メガ後の登場特性（ひでり等）
   return true;
 }
 
-/** 先発がすでにメガ形態なら used 扱いにする */
+/** 選出メンバーを通常姿＋石にそろえる（試合開始時） */
+export function demoteMegaMember(member, pokemonList) {
+  if (!member?.species) return member;
+  if (!isMegaName(member.species)) {
+    if (member.item === "メガストーン" && !member.megaTarget) {
+      const forms = megaFormsFor(member.species, pokemonList);
+      if (forms[0]) return { ...member, megaTarget: forms[0].name };
+    }
+    return member;
+  }
+  const base = baseNameFromMega(member.species);
+  const basePoke = pokemonList.find((p) => p.name === base);
+  if (!basePoke) return member;
+  return {
+    ...member,
+    species: base,
+    ability: basePoke.abilities?.[0] || member.ability,
+    item: "メガストーン",
+    megaTarget: member.species,
+  };
+}
+
+/** 先発がすでにメガ形態なら used 扱いにする（通常は使わない） */
 export function initMegaFlags(battle) {
   battle.megaUsed = { player: false, foe: false };
   for (const side of ["player", "foe"]) {

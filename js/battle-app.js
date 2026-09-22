@@ -14,24 +14,24 @@ import {
   wireUiModeToggle,
 } from "./common.js?v=20260922c";
 import { pokeImgHtml, itemImgHtml, typeIconHtml } from "./media.js?v=20260922d";
-import { createBattleState, hpRatio, activeOf, livingIndices, takeEvents } from "./battle/state.js?v=20260922f";
+import { createBattleState, hpRatio, activeOf, livingIndices, takeEvents } from "./battle/state.js?v=20260922g";
 import {
   resolveTurn,
   botChooseAction,
   forcePlayerSwitch,
   completePivotSwitch,
   completeForceSwitch,
-} from "./battle/engine.js?v=20260922f";
-import { generateFoeTeam, selectFoeThree } from "./battle/ai-team.js?v=20260922f";
+} from "./battle/engine.js?v=20260922g";
+import { generateFoeTeam, selectFoeThree } from "./battle/ai-team.js?v=20260922g";
 import { onSwitchIn } from "./battle/hooks.js?v=20260922f";
 import { fieldSummary, hazardsSummary } from "./battle/field.js?v=20260922f";
 import { applySwitchInHazards } from "./battle/hazards.js?v=20260922f";
 import {
   canMegaEvolve,
-  performMegaEvolve,
   listMegaOptions,
   initMegaFlags,
-} from "./battle/mega.js?v=20260922f";
+  demoteMegaMember,
+} from "./battle/mega.js?v=20260922g";
 
 const state = {
   pokemon: [],
@@ -43,6 +43,9 @@ const state = {
   mineSlot: 0,
   foeTeam: [],
   foeSelect: [],
+  megaIntent: false,
+  megaFormPick: "",
+  animating: false,
 };
 
 function pokeByName(name) {
@@ -141,24 +144,128 @@ function partyDots(sideState, elId) {
     .join("");
 }
 
-function animateEvents(events) {
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+function setHpBar(sideKey, hp, maxHp) {
+  const bar = $(sideKey === "player" ? "player-hp" : "foe-hp");
+  const text = $(sideKey === "player" ? "player-hp-text" : "foe-hp-text");
+  if (!bar) return;
+  const pct = maxHp > 0 ? Math.max(0, Math.min(100, (hp / maxHp) * 100)) : 0;
+  const span = bar.querySelector("span");
+  if (span) span.style.width = `${pct}%`;
+  bar.classList.toggle("low", pct <= 25);
+  if (text) text.textContent = `${Math.max(0, hp)} / ${maxHp}`;
+}
+
+function flashAtk(sideKey) {
+  const el = $(sideKey === "player" ? "player-sprite" : "foe-sprite");
+  if (!el) return;
+  el.classList.remove("atk");
+  void el.offsetWidth;
+  el.classList.add("atk");
+}
+
+function flashHit(sideKey) {
+  const el = $(sideKey === "player" ? "player-side" : "foe-side");
+  if (!el) return;
+  el.classList.remove("hit");
+  void el.offsetWidth;
+  el.classList.add("hit");
+}
+
+function flashMega(sideKey, species) {
+  const el = $(sideKey === "player" ? "player-sprite" : "foe-sprite");
+  if (!el) return;
+  el.classList.remove("mega-flash");
+  void el.offsetWidth;
+  el.classList.add("mega-flash");
+  const nameEl = $(sideKey === "player" ? "player-name" : "foe-name");
+  if (nameEl && species) nameEl.textContent = species;
+  const poke = pokeByName(species);
+  el.innerHTML = pokeImgHtml(species, { size: 120, dex: poke?.dex, round: true });
+}
+
+function showMoveBanner(text) {
+  let ban = $("battle-move-banner");
+  if (!ban) {
+    ban = document.createElement("div");
+    ban.id = "battle-move-banner";
+    ban.className = "battle-move-banner";
+    $("fight-panel")?.appendChild(ban);
+  }
+  ban.textContent = text;
+  ban.classList.add("show");
+  return ban;
+}
+
+function hideMoveBanner() {
+  $("battle-move-banner")?.classList.remove("show");
+}
+
+/** 先攻→（約1秒）→後攻の順でアニメ */
+async function playBattleEvents(events) {
+  let moveIndex = 0;
+  const hpTrack = {
+    player: {
+      hp: activeOf(state.battle?.player)?.hp,
+      max: activeOf(state.battle?.player)?.maxHp,
+    },
+    foe: {
+      hp: activeOf(state.battle?.foe)?.hp,
+      max: activeOf(state.battle?.foe)?.maxHp,
+    },
+  };
+  // ダメージを巻き戻して再生するため、イベントから逆算はせず
+  // 最終HPは renderFight で同期。ここでは演出のみ。
+
   for (const ev of events) {
-    if (ev.type === "damage") {
-      const side = ev.side === "player" ? $("player-side") : $("foe-side");
-      side?.classList.remove("hit");
-      void side?.offsetWidth;
-      side?.classList.add("hit");
+    if (ev.type === "mega") {
+      showMoveBanner("メガシンカ！");
+      flashMega(ev.side, ev.species);
+      await sleep(700);
+      hideMoveBanner();
     }
     if (ev.type === "move") {
-      const side = ev.side === "player" ? $("player-sprite") : $("foe-sprite");
-      side?.classList.remove("atk");
-      void side?.offsetWidth;
-      side?.classList.add("atk");
+      if (moveIndex > 0) await sleep(1000);
+      moveIndex += 1;
+      const label = moveIndex === 1 ? "先攻" : "後攻";
+      showMoveBanner(`${label}　${ev.species || ""} の ${ev.move}！`);
+      flashAtk(ev.side);
+      await sleep(450);
+    }
+    if (ev.type === "damage") {
+      flashHit(ev.side);
+      await sleep(350);
     }
     if (ev.type === "faint") {
       const side = ev.side === "player" ? $("player-sprite") : $("foe-sprite");
       side?.classList.add("faint");
+      await sleep(400);
     }
+    if (ev.type === "switch") {
+      await sleep(350);
+    }
+  }
+  hideMoveBanner();
+  void hpTrack;
+}
+
+async function runTurnAndAnimate(runFn) {
+  if (state.animating) return;
+  state.animating = true;
+  document.body.classList.add("battle-busy");
+  try {
+    runFn();
+    const events = takeEvents(state.battle);
+    // ログ・コマンドは先に更新しつつ、演出を再生
+    renderFight();
+    await playBattleEvents(events);
+    renderFight();
+  } finally {
+    state.animating = false;
+    document.body.classList.remove("battle-busy");
   }
 }
 
@@ -203,13 +310,13 @@ function renderFight() {
     : "";
 
   $("player-sprite").innerHTML = p
-    ? pokeImgHtml(p.species, { size: 96, dex: p.poke?.dex, round: true })
+    ? pokeImgHtml(p.species, { size: 120, dex: p.poke?.dex, round: true })
     : "";
   $("foe-sprite").innerHTML = f
-    ? pokeImgHtml(f.species, { size: 96, dex: f.poke?.dex, round: true })
+    ? pokeImgHtml(f.species, { size: 120, dex: f.poke?.dex, round: true })
     : "";
-  $("player-sprite").classList.remove("faint");
-  $("foe-sprite").classList.remove("faint");
+  $("player-sprite").classList.remove("faint", "mega-flash", "atk");
+  $("foe-sprite").classList.remove("faint", "mega-flash", "atk");
 
   partyDots(b.player, "player-dots");
   partyDots(b.foe, "foe-dots");
@@ -235,15 +342,20 @@ function renderFight() {
   $("switch-actions").innerHTML = "";
 
   if (b.winner) {
+    state.megaIntent = false;
     $("move-actions").innerHTML = `<div class="battle-result ${b.winner === "player" ? "win" : "lose"}">${
       b.winner === "player" ? "勝利！" : "敗北…"
     }</div>`;
     return;
   }
 
-  if (!forceSwitch && p) {
-    const megaBtn = canMegaEvolve(b, "player", state.pokemon)
-      ? `<button type="button" class="icon-btn mega-btn" id="btn-mega">メガシンカ</button>`
+  if (!forceSwitch && p && !state.animating) {
+    const canMega = canMegaEvolve(b, "player", state.pokemon);
+    if (!canMega) state.megaIntent = false;
+    const megaBtn = canMega
+      ? `<button type="button" class="icon-btn mega-btn ${state.megaIntent ? "on" : ""}" id="btn-mega">${
+          state.megaIntent ? "メガシンカ ON（技と同時）" : "メガシンカ"
+        }</button>`
       : "";
     $("move-actions").innerHTML =
       megaBtn +
@@ -258,7 +370,7 @@ function renderFight() {
         </button>`;
         })
         .join("");
-    $("btn-mega")?.addEventListener("click", doPlayerMega);
+    $("btn-mega")?.addEventListener("click", toggleMegaIntent);
   }
 
   const alive = livingIndices(b.player).filter((i) => forceSwitch || i !== b.player.active);
@@ -281,7 +393,7 @@ function startBattle() {
   const mine = teams()[state.mineSlot];
   const myMembers = filled(mine);
   const mySelect = [...state.myPick]
-    .map((k) => myMembers[Number(k)])
+    .map((k) => demoteMegaMember(myMembers[Number(k)], state.pokemon))
     .filter(Boolean);
 
   if (mySelect.length !== 3) {
@@ -298,7 +410,9 @@ function startBattle() {
     if (!extra) break;
     foeSelect.push(extra);
   }
-  foeSelect = foeSelect.slice(0, 3);
+  foeSelect = foeSelect
+    .slice(0, 3)
+    .map((m) => demoteMegaMember(m, state.pokemon));
   state.foeSelect = foeSelect;
 
   state.battle = createBattleState({
@@ -307,6 +421,8 @@ function startBattle() {
     pokeByName,
     movesDb: state.moves,
   });
+  state.battle._pokemonList = state.pokemon;
+  state.megaIntent = false;
   state.battle.log.push(`試合開始！ 自分: ${mySelect.map((m) => m.species).join(" / ")}`);
   state.battle.log.push(
     `相手AI選出: ${foeSelect.map((m) => `${m.species}(${m.item})`).join(" / ")}`
@@ -325,76 +441,74 @@ function startBattle() {
   show("setup-panel", false);
   show("select-panel", false);
   show("fight-panel", true);
+  document.body.classList.add("battle-live");
+  document.querySelector(".hub-app")?.classList.add("battle-live-app");
   renderFight();
 }
 
-function doPlayerMega() {
+function toggleMegaIntent() {
   const b = state.battle;
-  if (!b || b.winner) return;
-  const opts = listMegaOptions(b, "player", state.pokemon);
-  if (opts.length > 1) {
-    const names = opts.map((p) => p.name);
-    const pick = window.prompt(`メガ形態を選んでください:\n${names.map((n, i) => `${i + 1}. ${n}`).join("\n")}`, "1");
-    const idx = Math.max(0, (Number(pick) || 1) - 1);
-    performMegaEvolve(b, "player", state.pokemon, names[idx]);
-  } else {
-    performMegaEvolve(b, "player", state.pokemon);
+  if (!b || !canMegaEvolve(b, "player", state.pokemon)) return;
+  if (!state.megaIntent) {
+    const opts = listMegaOptions(b, "player", state.pokemon);
+    if (opts.length > 1) {
+      const names = opts.map((p) => p.name);
+      const pick = window.prompt(
+        `メガ形態を選んでください:\n${names.map((n, i) => `${i + 1}. ${n}`).join("\n")}`,
+        "1"
+      );
+      const idx = Math.max(0, (Number(pick) || 1) - 1);
+      state.megaFormPick = names[idx] || names[0];
+    } else {
+      state.megaFormPick = opts[0]?.name || "";
+    }
   }
-  onSwitchIn(b, "player");
+  state.megaIntent = !state.megaIntent;
   renderFight();
-}
-
-function maybeFoeMega() {
-  const b = state.battle;
-  if (!b || !canMegaEvolve(b, "foe", state.pokemon)) return;
-  if (Math.random() < 0.85) {
-    const atk = activeOf(b.foe);
-    performMegaEvolve(b, "foe", state.pokemon, atk?.megaTarget || undefined);
-    onSwitchIn(b, "foe");
-  }
 }
 
 function doPlayerMove(moveName) {
   const b = state.battle;
-  if (!b || b.winner || b.pendingSwitch || b.pendingPivot || b.pendingForce) return;
-  maybeFoeMega();
-  const foeAct = botChooseAction(b, state.moves);
-  resolveTurn(b, { player: { type: "move", move: moveName }, foe: foeAct }, state.moves);
-  const events = takeEvents(b);
-  renderFight();
-  animateEvents(events);
+  if (!b || b.winner || b.pendingSwitch || b.pendingPivot || b.pendingForce || state.animating) return;
+  const playerAct = {
+    type: "move",
+    move: moveName,
+    mega: !!state.megaIntent,
+    megaForm: state.megaFormPick || undefined,
+  };
+  state.megaIntent = false;
+  runTurnAndAnimate(() => {
+    const foeAct = botChooseAction(b, state.moves);
+    resolveTurn(b, { player: playerAct, foe: foeAct }, state.moves, state.pokemon);
+  });
 }
 
 function doPlayerSwitch(index) {
   const b = state.battle;
-  if (!b || b.winner) return;
+  if (!b || b.winner || state.animating) return;
   if (b.pendingPivot?.side === "player") {
-    completePivotSwitch(b, index);
-    const events = takeEvents(b);
-    renderFight();
-    animateEvents(events);
+    runTurnAndAnimate(() => {
+      completePivotSwitch(b, index);
+    });
     return;
   }
   if (b.pendingForce?.side === "player") {
-    completeForceSwitch(b, index);
-    const events = takeEvents(b);
-    renderFight();
-    animateEvents(events);
+    runTurnAndAnimate(() => {
+      completeForceSwitch(b, index);
+    });
     return;
   }
   if (b.pendingSwitch === "player") {
-    forcePlayerSwitch(b, index);
-    const events = takeEvents(b);
-    renderFight();
-    animateEvents(events);
+    runTurnAndAnimate(() => {
+      forcePlayerSwitch(b, index);
+    });
     return;
   }
-  const foeAct = botChooseAction(b, state.moves);
-  maybeFoeMega();
-  resolveTurn(b, { player: { type: "switch", index }, foe: foeAct }, state.moves);
-  const events = takeEvents(b);
-  renderFight();
-  animateEvents(events);
+  state.megaIntent = false;
+  runTurnAndAnimate(() => {
+    const foeAct = botChooseAction(b, state.moves);
+    resolveTurn(b, { player: { type: "switch", index }, foe: foeAct }, state.moves, state.pokemon);
+  });
 }
 
 function wire() {
@@ -455,6 +569,9 @@ function wire() {
   $("btn-reset").addEventListener("click", () => {
     state.battle = null;
     state.myPick = new Set();
+    state.megaIntent = false;
+    document.body.classList.remove("battle-live", "battle-busy");
+    document.querySelector(".hub-app")?.classList.remove("battle-live-app");
     show("fight-panel", false);
     show("select-panel", false);
     show("setup-panel", true);

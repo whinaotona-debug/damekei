@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="./css/style.css?v=20260922c" />
   <link rel="stylesheet" href="./css/hub.css?v=20260922c" />
   <link rel="stylesheet" href="./css/type-icons.css?v=20260922c" />
-  <link rel="stylesheet" href="./css/tools.css?v=20260922f" />
+  <link rel="stylesheet" href="./css/tools.css?v=20260922g" />
 </head>
 <body class="tools-page">
   <div class="hub-app">
@@ -59,52 +59,55 @@
       </section>
     </div>
 
-    <div class="battle-shell" id="fight-panel" hidden>
-      <div class="battle-arena">
-        <div class="battle-field-status" id="battle-field-status"></div>
-        <div class="battle-side foe" id="foe-side">
-          <div class="battle-mon">
-            <div class="battle-mon-info">
-              <div class="battle-name-row">
-                <strong id="foe-name">—</strong>
-                <span id="foe-hp-text" class="battle-hp-text"></span>
+    <div class="battle-shell battle-fight" id="fight-panel" hidden>
+      <div class="battle-stage">
+        <div class="battle-arena">
+          <div class="battle-field-status" id="battle-field-status"></div>
+          <div class="battle-side foe" id="foe-side">
+            <div class="battle-mon">
+              <div class="battle-mon-info">
+                <div class="battle-name-row">
+                  <strong id="foe-name">—</strong>
+                  <span id="foe-hp-text" class="battle-hp-text"></span>
+                </div>
+                <div class="hp-bar" id="foe-hp"><span style="width:100%"></span></div>
+                <div class="battle-meta" id="foe-status"></div>
+                <div class="battle-party-dots" id="foe-dots"></div>
               </div>
-              <div class="hp-bar" id="foe-hp"><span style="width:100%"></span></div>
-              <div class="battle-meta" id="foe-status"></div>
-              <div class="battle-party-dots" id="foe-dots"></div>
+              <div class="battle-sprite" id="foe-sprite"></div>
             </div>
-            <div class="battle-sprite" id="foe-sprite"></div>
+          </div>
+
+          <div class="battle-side player" id="player-side">
+            <div class="battle-mon">
+              <div class="battle-sprite" id="player-sprite"></div>
+              <div class="battle-mon-info">
+                <div class="battle-name-row">
+                  <strong id="player-name">—</strong>
+                  <span id="player-hp-text" class="battle-hp-text"></span>
+                </div>
+                <div class="hp-bar" id="player-hp"><span style="width:100%"></span></div>
+                <div class="battle-meta" id="player-status"></div>
+                <div class="battle-party-dots" id="player-dots"></div>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div class="battle-side player" id="player-side">
-          <div class="battle-mon">
-            <div class="battle-sprite" id="player-sprite"></div>
-            <div class="battle-mon-info">
-              <div class="battle-name-row">
-                <strong id="player-name">—</strong>
-                <span id="player-hp-text" class="battle-hp-text"></span>
-              </div>
-              <div class="hp-bar" id="player-hp"><span style="width:100%"></span></div>
-              <div class="battle-meta" id="player-status"></div>
-              <div class="battle-party-dots" id="player-dots"></div>
+        <div class="battle-hud">
+          <div class="battle-log" id="battle-log" aria-live="polite"></div>
+          <div class="battle-cmd">
+            <div id="move-actions" class="battle-actions"></div>
+            <div id="switch-actions" class="select-row" style="margin-top:8px"></div>
+            <div style="margin-top:8px">
+              <button type="button" class="icon-btn" id="btn-reset">試合をやめる</button>
             </div>
           </div>
         </div>
       </div>
-
-      <div class="battle-cmd">
-        <div id="move-actions" class="battle-actions"></div>
-        <div id="switch-actions" class="select-row" style="margin-top:8px"></div>
-        <div style="margin-top:8px">
-          <button type="button" class="icon-btn" id="btn-reset">試合をやめる</button>
-        </div>
-      </div>
-
-      <div class="battle-log" id="battle-log" aria-live="polite"></div>
     </div>
   </div>
 
-  <script type="module" src="./js/battle-app.js?v=20260922f"></script>
+  <script type="module" src="./js/battle-app.js?v=20260922g"></script>
 </body>
 </html>

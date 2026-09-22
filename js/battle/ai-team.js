@@ -230,8 +230,8 @@ export function generateFoeTeam({ pokemon, moves, learnsets, avoidSpecies = [] }
     let learnName = poke.name;
     let megaTarget = "";
 
-    // メガは「通常姿＋石」にして試合中メガシンカさせる場合あり
-    if (isMega(poke.name) && Math.random() < 0.6) {
+    // メガは必ず通常姿＋石で開始（試合中にメガシンカ）
+    if (isMega(poke.name)) {
       const baseName = baseFormOfMega(poke.name);
       const basePoke = pokemon.find((p) => p.name === baseName);
       if (basePoke && (learnsets[baseName] || []).length >= 4) {
@@ -240,6 +240,8 @@ export function generateFoeTeam({ pokemon, moves, learnsets, avoidSpecies = [] }
         ability = basePoke.abilities?.[0] || ability;
         learnName = baseName;
         megaTarget = poke.name;
+      } else {
+        continue; // ベースが組めないメガはスキップ
       }
     }
 

@@ -30,7 +30,7 @@ import {
   checkAbsorbAbility,
   onFaintDestinyBond,
 } from "./special-moves.js?v=20260922f";
-import { canMegaEvolve, performMegaEvolve } from "./mega.js?v=20260922f";
+import { canMegaEvolve, performMegaEvolve } from "./mega.js?v=20260922g";
 
 function moveObj(moveName, movesDb) {
   return movesDb.find((m) => m.name === moveName) || null;
@@ -206,7 +206,11 @@ function executeMove(battle, atkSideKey, defSideKey, moveName, movesDb) {
   if (!canAct(battle, atk)) return;
 
   const slot = findMoveSlot(atk, moveName);
-  if (slot && slot.pp <= 0) {
+  if (!slot) {
+    pushLog(battle, `${atk.species} は ${moveName} を使えない！`);
+    return;
+  }
+  if (slot.pp <= 0) {
     pushLog(battle, `${atk.species} の ${moveName} は PPが残っていない！`);
     return;
   }
@@ -438,21 +442,24 @@ function executeMove(battle, atkSideKey, defSideKey, moveName, movesDb) {
 }
 
 /**
- * actions: { player: { type:'move'|'switch', move?, index? }, foe: same }
+ * actions: { player: { type:'move'|'switch', move?, index?, mega? }, foe: same }
+ * pokemonList: メガ進化用
  */
-export function resolveTurn(battle, actions, movesDb) {
+export function resolveTurn(battle, actions, movesDb, pokemonList) {
   if (battle.winner) return battle;
   battle.pendingSwitch = null;
   battle.events = [];
   battle.turn += 1;
   pushLog(battle, `── ターン ${battle.turn} ──`);
 
+  if (pokemonList) battle._pokemonList = pokemonList;
   const order = [];
   for (const side of ["player", "foe"]) {
     const act = actions[side];
     if (!act) continue;
+    const lockedActive = battle[side].active;
     if (act.type === "switch") {
-      order.push({ side, act, pri: 6, spe: 9999 });
+      order.push({ side, act, pri: 6, spe: 9999, lockedActive });
     } else {
       const move = moveObj(act.move, movesDb);
       const b = activeOf(battle[side]);
@@ -461,6 +468,7 @@ export function resolveTurn(battle, actions, movesDb) {
         act,
         pri: movePriority(move),
         spe: effectiveSpe(b, battle),
+        lockedActive,
       });
     }
   }
@@ -470,8 +478,18 @@ export function resolveTurn(battle, actions, movesDb) {
     return b.spe - a.spe || (Math.random() < 0.5 ? -1 : 1);
   });
 
+  // 先攻・後攻をログで明示
+  const movers = order.filter((s) => s.act?.type === "move");
+  if (movers.length >= 1) {
+    const a = activeOf(battle[movers[0].side]);
+    pushLog(battle, `先攻 ${a?.species || "—"} の ${movers[0].act.move}`);
+  }
+  if (movers.length >= 2) {
+    const a = activeOf(battle[movers[1].side]);
+    pushLog(battle, `後攻 ${a?.species || "—"} の ${movers[1].act.move}`);
+  }
+
   battle._movesDb = movesDb;
-  battle._pokemonList = battle._pokemonList || null;
   return runActionOrder(battle, order, movesDb);
 }
 
@@ -479,9 +497,14 @@ function runActionOrder(battle, order, movesDb) {
   for (let i = 0; i < order.length; i++) {
     if (battle.winner) break;
     const step = order[i];
-    const { side, act } = step;
+    const { side, act, lockedActive } = step;
     const self = activeOf(battle[side]);
     if (!self || self.fainted) continue;
+
+    // ひんし交代で場が変わったら、倒れた側の行動は無効（引き継ぎ禁止）
+    if (act.type !== "switch" && battle[side].active !== lockedActive) {
+      continue;
+    }
 
     if (act.type === "switch") {
       doSwitch(battle, side, act.index);
@@ -491,6 +514,15 @@ function runActionOrder(battle, order, movesDb) {
         if (!tryFaintSwitch(battle, side)) return battle;
       }
       continue;
+    }
+
+    // そのターンのメガシンカ → 続けて技
+    if (act.mega && battle._pokemonList) {
+      const formName = act.megaForm || self.megaTarget || undefined;
+      if (canMegaEvolve(battle, side, battle._pokemonList)) {
+        performMegaEvolve(battle, side, battle._pokemonList, formName);
+        onSwitchIn(battle, side);
+      }
     }
 
     const defSide = side === "player" ? "foe" : "player";
@@ -624,13 +656,13 @@ export function completeForceSwitch(battle, index) {
 export function botChooseAction(battle, movesDb) {
   const atk = activeOf(battle.foe);
   const def = activeOf(battle.player);
-  if (!atk || !def) return { type: "move", move: atk?.moves?.[0]?.name };
+  if (!atk || !def) return withMegaChance({ type: "move", move: atk?.moves?.[0]?.name }, battle);
 
   // prefer setting hazards if none and have the move
   const haz = battle.hazards.player;
   if (!haz.stealthRock) {
     const sr = (atk.moves || []).find((s) => s.name === "ステルスロック" && s.pp > 0);
-    if (sr && Math.random() < 0.45) return { type: "move", move: sr.name };
+    if (sr && Math.random() < 0.45) return withMegaChance({ type: "move", move: sr.name }, battle);
   }
 
   let best = null;
@@ -672,7 +704,10 @@ export function botChooseAction(battle, movesDb) {
         s.pp > 0
     );
     const any = (atk.moves || []).find((s) => s.pp > 0);
-    return { type: "move", move: setup?.name || any?.name || atk.moves?.[0]?.name };
+    return withMegaChance(
+      { type: "move", move: setup?.name || any?.name || atk.moves?.[0]?.name },
+      battle
+    );
   }
 
   if (best.score < 12) {
@@ -683,14 +718,26 @@ export function botChooseAction(battle, movesDb) {
     const status = (atk.moves || []).find((s) =>
       ["でんじは", "おにび", "どくどく", "やどりぎのタネ", "みがわり", "すてゼリフ"].includes(s.name) && s.pp > 0
     );
-    if (status) return { type: "move", move: status.name };
+    if (status) return withMegaChance({ type: "move", move: status.name }, battle);
   }
   // 低HPなら交代技で逃げる
   if (atk.hp / atk.maxHp < 0.35 && hasBench(battle, "foe")) {
     const pivot = (atk.moves || []).find((s) => PIVOT_MOVES.has(s.name) && s.pp > 0);
-    if (pivot && Math.random() < 0.5) return { type: "move", move: pivot.name };
+    if (pivot && Math.random() < 0.5) {
+      return withMegaChance({ type: "move", move: pivot.name }, battle);
+    }
   }
-  return { type: "move", move: best.name };
+  return withMegaChance({ type: "move", move: best.name }, battle);
+}
+
+function withMegaChance(act, battle) {
+  if (act.type !== "move") return act;
+  const list = battle._pokemonList;
+  if (list && canMegaEvolve(battle, "foe", list) && Math.random() < 0.8) {
+    const atk = activeOf(battle.foe);
+    return { ...act, mega: true, megaForm: atk?.megaTarget || undefined };
+  }
+  return act;
 }
 
 export { activeOf, livingIndices, effectiveSpe };
