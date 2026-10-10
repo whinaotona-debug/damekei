@@ -7,7 +7,7 @@ import {
   getActiveSlot,
   setActiveSlot,
   applyUiMode,
-} from "./team-store.js?v=20260922c";
+} from "./team-store.js?v=20260922k";
 import {
   $,
   loadGameData,
@@ -22,7 +22,7 @@ import {
   completePivotSwitch,
   completeForceSwitch,
 } from "./battle/engine.js?v=20260922j";
-import { generateFoeTeam, selectFoeThree } from "./battle/ai-team.js?v=20260922g";
+import { generateFoeTeam, selectFoeThree } from "./battle/ai-team.js?v=20260922k";
 import { onSwitchIn } from "./battle/hooks.js?v=20260922f";
 import { fieldSummary, hazardsSummary } from "./battle/field.js?v=20260922f";
 import { applySwitchInHazards } from "./battle/hazards.js?v=20260922f";
@@ -349,11 +349,12 @@ function renderFight() {
     return;
   }
 
-  if (!forceSwitch && p && !state.animating) {
+  if (!forceSwitch && p) {
     const canMega = canMegaEvolve(b, "player", state.pokemon);
     if (!canMega) state.megaIntent = false;
+    const busy = !!state.animating;
     const megaBtn = canMega
-      ? `<button type="button" class="icon-btn mega-btn ${state.megaIntent ? "on" : ""}" id="btn-mega">${
+      ? `<button type="button" class="icon-btn mega-btn ${state.megaIntent ? "on" : ""}" id="btn-mega" ${busy ? "disabled" : ""}>${
           state.megaIntent ? "メガシンカ ON（技と同時）" : "メガシンカ"
         }</button>`
       : "";
@@ -362,7 +363,7 @@ function renderFight() {
       (p.moves || [])
         .map((slot) => {
           const mv = moveByName(slot.name);
-          const empty = slot.pp <= 0;
+          const empty = slot.pp <= 0 || busy;
           return `<button type="button" class="selector-btn compact battle-move ${empty ? "disabled" : ""}" data-move="${escapeAttr(slot.name)}" ${empty ? "disabled" : ""}>
           <div class="k">${mv ? typeIconHtml(mv.type, { size: "sm" }) : ""} ${mv?.category || ""}　PP ${slot.pp}/${slot.maxPp}</div>
           <div class="title">${slot.name}</div>
@@ -370,7 +371,7 @@ function renderFight() {
         </button>`;
         })
         .join("");
-    $("btn-mega")?.addEventListener("click", toggleMegaIntent);
+    if (!busy) $("btn-mega")?.addEventListener("click", toggleMegaIntent);
   }
 
   const alive = livingIndices(b.player).filter((i) => forceSwitch || i !== b.player.active);

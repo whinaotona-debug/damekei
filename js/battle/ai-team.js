@@ -2,9 +2,9 @@
  * 相手AI構築ジェネレータ（Phase 1）
  * 図鑑からタイプ分散した6匹を選び、役割に応じた努力値・持ち物・技をセットする
  */
-import { emptyEvs, EV_MAX_PER, EV_MAX_TOTAL } from "../stats.js?v=20260922b";
-import { calculateDamage } from "../damage.js?v=20260922b";
-import { emptyRanks } from "../stats.js?v=20260922b";
+import { emptyEvs, EV_MAX_PER, EV_MAX_TOTAL } from "../stats.js?v=20260922i";
+import { calculateDamage } from "../damage.js?v=20260922k";
+import { emptyRanks } from "../stats.js?v=20260922i";
 
 function shuffle(arr) {
   const a = [...arr];
@@ -51,18 +51,33 @@ function natureFor(role) {
   }
 }
 
-function itemFor(role, mega) {
+const SHARED_ITEMS = new Set([
+  "こだわりスカーフ",
+  "いのちのたま",
+  "たべのこし",
+  "きあいのタスキ",
+  "たつじんのおび",
+  "こだわりハチマキ",
+  "こだわりメガネ",
+  "ゴツゴツメット",
+  "オボンのみ",
+]);
+
+function itemFor(role, mega, usedItems = null) {
   if (mega) return "メガストーン";
   const table = {
-    physFast: ["こだわりスカーフ", "いのちのたま", "きあいのタスキ"],
-    specFast: ["こだわりスカーフ", "いのちのたま", "きあいのタスキ"],
-    phys: ["いのちのたま", "こだわりハチマキ", "たつじんのおび"],
-    spec: ["いのちのたま", "こだわりメガネ", "たつじんのおび"],
-    physBulk: ["たべのこし", "オボンのみ", "ゴツゴツメット"],
-    specBulk: ["たべのこし", "オボンのみ", "ものしりメガネ"],
+    physFast: ["こだわりスカーフ", "いのちのたま", "きあいのタスキ", "ピントレンズ"],
+    specFast: ["こだわりスカーフ", "いのちのたま", "きあいのタスキ", "ものしりメガネ"],
+    phys: ["いのちのたま", "こだわりハチマキ", "たつじんのおび", "ちからのハチマキ"],
+    spec: ["いのちのたま", "こだわりメガネ", "たつじんのおび", "ものしりメガネ"],
+    physBulk: ["たべのこし", "オボンのみ", "ゴツゴツメット", "しんかのきせき"],
+    specBulk: ["たべのこし", "オボンのみ", "ものしりメガネ", "しんかのきせき"],
   };
-  const opts = table[role] || ["たべのこし"];
-  return opts[Math.floor(Math.random() * opts.length)];
+  const opts = table[role] || ["たべのこし", "オボンのみ"];
+  const fresh = opts.filter((it) => !usedItems?.has(it));
+  const pool = fresh.length ? fresh : opts.filter((it) => !SHARED_ITEMS.has(it) || !usedItems?.has(it));
+  const pick = (pool.length ? pool : opts)[Math.floor(Math.random() * (pool.length ? pool.length : opts.length))];
+  return pick;
 }
 
 function investEvs(role) {
@@ -204,6 +219,7 @@ export function generateFoeTeam({ pokemon, moves, learnsets, avoidSpecies = [] }
   const avoid = new Set(avoidSpecies.filter(Boolean));
   const usedTypes = new Map(); // type -> count
   const usedBases = new Set();
+  const usedItems = new Set();
   const picked = [];
   let megaCount = 0;
 
@@ -225,7 +241,7 @@ export function generateFoeTeam({ pokemon, moves, learnsets, avoidSpecies = [] }
     if (!typeOk(poke.types || [])) continue;
 
     let species = poke.name;
-    let item = itemFor(roleOf(poke), isMega(poke.name));
+    let item = "";
     let ability = poke.abilities?.[0] || "";
     let learnName = poke.name;
     let megaTarget = "";
@@ -250,6 +266,7 @@ export function generateFoeTeam({ pokemon, moves, learnsets, avoidSpecies = [] }
 
     const buildPoke = pokemon.find((p) => p.name === species) || poke;
     const role = roleOf(buildPoke);
+    if (!item) item = itemFor(role, false, usedItems);
     const member = {
       species,
       ability,
@@ -263,6 +280,7 @@ export function generateFoeTeam({ pokemon, moves, learnsets, avoidSpecies = [] }
 
     picked.push(member);
     usedBases.add(base);
+    if (item && item !== "なし") usedItems.add(item);
     if (isMega(poke.name) || megaTarget) megaCount += 1;
     for (const t of poke.types || []) {
       usedTypes.set(t, (usedTypes.get(t) || 0) + 1);
@@ -275,14 +293,16 @@ export function generateFoeTeam({ pokemon, moves, learnsets, avoidSpecies = [] }
     if (!poke) break;
     const role = roleOf(poke);
     const learn = learnsets[poke.name] || [];
+    const item = itemFor(role, isMega(poke.name), usedItems);
     picked.push({
       species: poke.name,
       ability: poke.abilities?.[0] || "",
-      item: itemFor(role, isMega(poke.name)),
+      item,
       nature: natureFor(role),
       evs: investEvs(role),
       moves: pickMoves(poke, learn, moves, role),
     });
+    if (item && item !== "なし") usedItems.add(item);
     usedBases.add(baseFormOfMega(poke.name));
   }
 

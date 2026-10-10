@@ -1,9 +1,10 @@
 /**
- * 構築ストレージ（最大3パーティ）
+ * 構築ストレージ（最大12パーティ、最低1）
  */
 import { emptyEvs, NATURES } from "./stats.js?v=20260920k";
 
-export const MAX_TEAMS = 3;
+export const MAX_TEAMS = 12;
+export const MIN_TEAMS = 1;
 export const TEAMS_KEY = "damekei-builds-v2";
 export const LEGACY_TEAMS_KEY = "damekei-teams-v1";
 /** 過去バージョンで使っていた可能性のあるキー */
@@ -119,15 +120,14 @@ function migrateFromLegacy() {
   return found[0]?.list || null;
 }
 
-function padTeams(list) {
-  const out = [];
-  for (let i = 0; i < MAX_TEAMS; i++) {
-    out.push(normalizeTeam(list?.[i], `構築${i + 1}`));
-  }
+function clampTeamList(list) {
+  const src = Array.isArray(list) ? list : [];
+  const out = src.slice(0, MAX_TEAMS).map((t, i) => normalizeTeam(t, `構築${i + 1}`));
+  if (!out.length) out.push(emptyTeam("構築1"));
   return out;
 }
 
-/** 常にちょうど3枠を返す。空の新キーしかないとき旧データを自動復元 */
+/** 保存済みの構築一覧を返す（1〜12） */
 export function loadTeams() {
   try {
     let current = parseTeamList(localStorage.getItem(TEAMS_KEY));
@@ -136,7 +136,7 @@ export function loadTeams() {
     if (!currentFill) {
       const legacy = migrateFromLegacy();
       if (legacy && teamFillCount(legacy)) {
-        const saved = padTeams(legacy);
+        const saved = clampTeamList(legacy);
         localStorage.setItem(TEAMS_KEY, JSON.stringify(saved));
         return saved;
       }
@@ -145,7 +145,7 @@ export function loadTeams() {
     if (!current || !current.length) {
       current = [emptyTeam("構築1"), emptyTeam("構築2"), emptyTeam("構築3")];
     }
-    return padTeams(current);
+    return clampTeamList(current);
   } catch {
     return [emptyTeam("構築1"), emptyTeam("構築2"), emptyTeam("構築3")];
   }
@@ -176,7 +176,7 @@ export function restoreLegacyTeams({ force = false } = {}) {
       message: `今の構築の方が充実しています（今${currentFill}匹 / 旧${best.fill}匹）。上書きする場合は強制復元してください。`,
     };
   }
-  const saved = padTeams(best.list);
+  const saved = clampTeamList(best.list);
   localStorage.setItem(TEAMS_KEY, JSON.stringify(saved));
   return {
     ok: true,
@@ -187,7 +187,7 @@ export function restoreLegacyTeams({ force = false } = {}) {
 }
 
 export function saveTeams(list) {
-  const out = padTeams(list);
+  const out = clampTeamList(list);
   localStorage.setItem(TEAMS_KEY, JSON.stringify(out));
   return out;
 }
@@ -200,18 +200,23 @@ export function upsertTeam(team) {
   const list = loadTeams();
   const i = list.findIndex((t) => t.id === team.id);
   const next = normalizeTeam({ ...team, updatedAt: Date.now() }, team.name);
-  if (i >= 0) list[i] = next;
-  else {
-    const emptyIdx = list.findIndex((t) => !t.members.some((m) => m.species));
-    if (emptyIdx >= 0) list[emptyIdx] = next;
-    else list[0] = next;
+  if (i >= 0) {
+    list[i] = next;
+    return saveTeams(list)[i];
   }
-  return saveTeams(list)[i >= 0 ? i : 0];
+  if (list.length < MAX_TEAMS) {
+    list.push(next);
+    return saveTeams(list)[list.length - 1];
+  }
+  const emptyIdx = list.findIndex((t) => !t.members.some((m) => m.species));
+  if (emptyIdx >= 0) list[emptyIdx] = next;
+  else list[0] = next;
+  return saveTeams(list)[emptyIdx >= 0 ? emptyIdx : 0];
 }
 
 export function replaceTeamAt(slot, team) {
   const list = loadTeams();
-  const i = Math.max(0, Math.min(MAX_TEAMS - 1, slot));
+  const i = Math.max(0, Math.min(list.length - 1, slot));
   list[i] = normalizeTeam({ ...team, updatedAt: Date.now() }, team.name || `構築${i + 1}`);
   saveTeams(list);
   return list[i];
@@ -221,14 +226,40 @@ export function clearTeamAt(slot) {
   return replaceTeamAt(slot, emptyTeam(`構築${slot + 1}`));
 }
 
+export function addTeam(name) {
+  const list = loadTeams();
+  if (list.length >= MAX_TEAMS) {
+    return { ok: false, list, message: `構築は最大${MAX_TEAMS}までです` };
+  }
+  list.push(emptyTeam(name || `構築${list.length + 1}`));
+  const saved = saveTeams(list);
+  return { ok: true, list: saved, slot: saved.length - 1 };
+}
+
+export function removeTeamAt(slot) {
+  const list = loadTeams();
+  if (list.length <= MIN_TEAMS) {
+    return { ok: false, list, message: "構築は最低1つ必要です" };
+  }
+  const i = Math.max(0, Math.min(list.length - 1, Number(slot) || 0));
+  list.splice(i, 1);
+  const saved = saveTeams(list);
+  const active = getActiveSlot();
+  if (active >= saved.length) setActiveSlot(saved.length - 1);
+  else if (active > i) setActiveSlot(active - 1);
+  return { ok: true, list: saved, slot: Math.min(i, saved.length - 1) };
+}
+
 export function getActiveSlot() {
+  const list = loadTeams();
   const n = Number(localStorage.getItem(ACTIVE_SLOT_KEY));
-  if (!Number.isFinite(n) || n < 0 || n >= MAX_TEAMS) return 0;
+  if (!Number.isFinite(n) || n < 0 || n >= list.length) return 0;
   return n;
 }
 
 export function setActiveSlot(slot) {
-  const i = Math.max(0, Math.min(MAX_TEAMS - 1, Number(slot) || 0));
+  const list = loadTeams();
+  const i = Math.max(0, Math.min(list.length - 1, Number(slot) || 0));
   localStorage.setItem(ACTIVE_SLOT_KEY, String(i));
   return i;
 }
@@ -248,43 +279,14 @@ export function getUiMode() {
   return detectUiMode();
 }
 
-export function setUiMode(mode) {
-  // 互換API: 手動指定はせず、常に画面幅に合わせる
-  return applyUiMode();
-}
-
 export function applyUiMode() {
   const mode = detectUiMode();
-  document.documentElement.dataset.ui = mode;
-  if (typeof window !== "undefined" && !window.__damekeiUiWired) {
-    window.__damekeiUiWired = true;
-    let timer = 0;
-    const onChange = () => {
-      clearTimeout(timer);
-      timer = setTimeout(() => {
-        document.documentElement.dataset.ui = detectUiMode();
-      }, 80);
-    };
-    window.addEventListener("resize", onChange);
-    try {
-      window.matchMedia("(min-width: 768px)").addEventListener("change", onChange);
-    } catch {
-      /* older browsers */
-    }
-  }
+  document.documentElement.setAttribute("data-ui", mode);
   return mode;
 }
 
-/** @deprecated wireUiModeToggle を使う */
-export function wireResponsiveUi() {
-  return applyUiMode();
-}
-
 export function isMegaName(name) {
-  if (!name || name === "メガニウム") return false;
-  return name.startsWith("メガ");
+  return !!(name && String(name).startsWith("メガ") && name !== "メガニウム");
 }
 
-export function natureNames() {
-  return NATURES.map((n) => n.name);
-}
+export { NATURES };

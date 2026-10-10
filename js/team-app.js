@@ -24,7 +24,11 @@ import {
   emptyMember,
   restoreLegacyTeams,
   findLegacyTeams,
-} from "./team-store.js?v=20260922c";
+  addTeam,
+  removeTeamAt,
+  MAX_TEAMS,
+} from "./team-store.js?v=20260922k";
+import { importTeamFromScreenshots, importPreviewHtml } from "./team-import.js?v=20260922k";
 import {
   $,
   textMatchesQuery,
@@ -130,6 +134,8 @@ function renderSlotTabs() {
       </button>`;
     })
     .join("");
+  const addBtn = $("btn-add-team");
+  if (addBtn) addBtn.disabled = state.teams.length >= MAX_TEAMS;
 }
 
 function renderList() {
@@ -500,6 +506,86 @@ function showShareCode() {
   $("btn-close-share").addEventListener("click", () => closeModal());
 }
 
+function showImportShot() {
+  openModal(
+    "画像から構築取り込み",
+    `<p class="hint">チャンピオンズのチーム画面を<strong>2枚</strong>入れてください。<br>
+    ①ステータス（努力値・性格）　②能力（技・持ち物・特性）</p>
+    <div class="import-shot-fields">
+      <label class="field-label">① ステータス画面
+        <input type="file" id="shot-stats" accept="image/*" capture="environment" />
+      </label>
+      <label class="field-label">② 能力画面（技・持ち物）
+        <input type="file" id="shot-moves" accept="image/*" capture="environment" />
+      </label>
+    </div>
+    <p class="hint" id="import-status">読み取りには数十秒かかることがあります（初回はOCRデータ取得）</p>
+    <div id="import-preview"></div>
+    <div class="share-actions">
+      <button type="button" class="icon-btn primary" id="btn-do-shot">読み取って取り込む</button>
+      <button type="button" class="icon-btn" id="btn-cancel-shot">キャンセル</button>
+    </div>`
+  );
+  $("btn-cancel-shot").addEventListener("click", () => closeModal());
+  $("btn-do-shot").addEventListener("click", async () => {
+    const stats = $("shot-stats")?.files?.[0];
+    const moves = $("shot-moves")?.files?.[0];
+    if (!stats || !moves) {
+      alert("ステータス画面と能力画面の両方を選んでください");
+      return;
+    }
+    const status = $("import-status");
+    const btn = $("btn-do-shot");
+    btn.disabled = true;
+    try {
+      const result = await importTeamFromScreenshots({
+        statsFile: stats,
+        movesFile: moves,
+        catalogs: {
+          pokemon: state.pokemon,
+          moves: state.moves,
+          items: state.items,
+        },
+        onProgress: (msg, p) => {
+          if (status) {
+            status.textContent =
+              p != null ? `${msg} ${Math.round(p * 100)}%` : msg;
+          }
+        },
+      });
+      $("import-preview").innerHTML = importPreviewHtml(result.report);
+      const filled = result.members.filter((m) => m.species).length;
+      if (!filled) {
+        alert("ポケモンを検出できませんでした。画面全体が写った明るいスクショで再試行してください。");
+        btn.disabled = false;
+        return;
+      }
+      if (
+        !confirm(
+          `検出 ${filled} 匹を現在の構築枠「${team().name || "構築"}」に上書きしますか？`
+        )
+      ) {
+        btn.disabled = false;
+        return;
+      }
+      const next = {
+        ...team(),
+        members: result.members,
+        updatedAt: Date.now(),
+      };
+      replaceTeamAt(state.slot, next);
+      state.teams = loadTeams();
+      closeModal();
+      showList();
+      toast(`${filled}匹取り込みました`);
+    } catch (err) {
+      console.error(err);
+      alert(err?.message || "取り込みに失敗しました");
+      btn.disabled = false;
+    }
+  });
+}
+
 function showImportCode() {
   openModal(
     "コードから取り込み",
@@ -579,6 +665,36 @@ function wire() {
   });
   $("btn-import-code").addEventListener("click", () => {
     showImportCode();
+  });
+
+  $("btn-add-team")?.addEventListener("click", () => {
+    saveTeamMeta();
+    const res = addTeam(`構築${state.teams.length + 1}`);
+    if (!res.ok) {
+      alert(res.message);
+      return;
+    }
+    state.teams = res.list;
+    state.slot = setActiveSlot(res.slot);
+    showList();
+    toast("構築を追加しました");
+  });
+
+  $("btn-del-team")?.addEventListener("click", () => {
+    if (!confirm(`「${team().name || "この構築"}」を削除しますか？`)) return;
+    const res = removeTeamAt(state.slot);
+    if (!res.ok) {
+      alert(res.message);
+      return;
+    }
+    state.teams = res.list;
+    state.slot = setActiveSlot(res.slot);
+    showList();
+    toast("削除しました");
+  });
+
+  $("btn-import-shot")?.addEventListener("click", () => {
+    showImportShot();
   });
 
   $("btn-restore-legacy").addEventListener("click", () => {

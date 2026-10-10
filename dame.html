@@ -9,9 +9,9 @@
   <title>ダメ計 | 攻撃・受け両対応</title>
   <link rel="icon" type="image/png" href="./icons/icon.png" />
   <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
-  <link rel="stylesheet" href="./css/style.css?v=20260922i" />
-  <link rel="stylesheet" href="./css/hub.css?v=20260922i" />
-  <link rel="stylesheet" href="./css/type-icons.css?v=20260922i" />
+  <link rel="stylesheet" href="./css/style.css?v=20260922k" />
+  <link rel="stylesheet" href="./css/hub.css?v=20260922k" />
+  <link rel="stylesheet" href="./css/type-icons.css?v=20260922k" />
 </head>
 <body class="tools-page calc-page">
   <div class="hub-app">
@@ -21,7 +21,7 @@
       </a>
       <div class="titles">
         <h1>ダメ計</h1>
-        <p>構築を攻撃側にも受け側にも置ける</p>
+        <p>構築でも自由選択でもリアルタイム計算</p>
       </div>
       <nav class="hub-nav">
         <a href="./index.html" class="nav-home">ホーム</a>
@@ -32,13 +32,18 @@
 
     <div class="calc-layout">
       <div class="calc-main">
-        <div class="team-toolbar">
+        <div class="mode-tabs" role="tablist" aria-label="計算モード">
+          <button type="button" class="mode-tab on" data-mode="team" aria-selected="true">構築モード</button>
+          <button type="button" class="mode-tab" data-mode="free" aria-selected="false">自由選択</button>
+        </div>
+
+        <div class="team-toolbar" id="team-toolbar">
           <label class="field-label" for="team-slot">自分の構築</label>
           <select id="team-slot" aria-label="構築選択"></select>
           <button type="button" class="icon-btn" id="btn-edit-team">構築を編集</button>
         </div>
 
-        <div class="role-tabs" role="tablist" aria-label="構築の役割">
+        <div class="role-tabs" id="role-tabs" role="tablist" aria-label="構築の役割">
           <button type="button" class="role-tab on" data-role="atk" aria-selected="true">構築が攻撃</button>
           <button type="button" class="role-tab" data-role="def" aria-selected="false">構築が受け</button>
         </div>
@@ -117,7 +122,10 @@
 
       <aside class="calc-results" id="calc-results">
         <div class="calc-results-head">
-          <h2 id="results-title">ダメージ結果</h2>
+          <div class="results-head-main">
+            <h2 id="results-title">ダメージ結果</h2>
+            <div class="result-mini-bar" id="result-mini-bar">未計算</div>
+          </div>
           <button type="button" class="icon-btn results-toggle" id="btn-results-toggle" aria-label="結果を開閉">結果</button>
         </div>
         <div class="bulk-results" id="bulk-results">
@@ -137,6 +145,6 @@
     </div>
   </div>
 
-  <script type="module" src="./js/calc-app.js?v=20260922j"></script>
+  <script type="module" src="./js/calc-app.js?v=20260922k"></script>
 </body>
 </html>

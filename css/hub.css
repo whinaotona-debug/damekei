@@ -622,7 +622,7 @@ html[data-ui="ipad"] .member-grid {
 /* スマホ: ダメ計ページのみ結果を下固定パネルに */
 @media (max-width: 767px) {
   .calc-page .hub-app {
-    padding-bottom: calc(28vh + 16px);
+    padding-bottom: calc(34vh + 16px);
   }
   .calc-page .calc-results {
     position: fixed;
@@ -630,41 +630,51 @@ html[data-ui="ipad"] .member-grid {
     right: 0;
     bottom: 0;
     z-index: 35;
-    max-height: 42vh;
-    border-radius: 16px 16px 0 0;
+    max-height: 48vh;
+    border-radius: 18px 18px 0 0;
     box-shadow: 0 -10px 28px rgba(0, 0, 0, 0.18);
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    padding-bottom: env(safe-area-inset-bottom, 0);
   }
   body.results-collapsed.calc-page .calc-results,
   .calc-page.results-collapsed .calc-results {
-    max-height: 52px;
+    max-height: 64px;
   }
   body.results-collapsed .calc-page .hub-app {
-    padding-bottom: 64px;
+    padding-bottom: 72px;
   }
   .calc-page .calc-results-head {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    padding: 8px 10px 0;
+    padding: 10px 12px 0;
     flex: 0 0 auto;
   }
   .calc-page .calc-results-head h2 {
     margin: 0;
     border: none;
     padding: 0;
+    font-size: 0.95rem;
   }
   .calc-page .bulk-results {
     overflow: auto;
-    padding: 8px 10px 12px;
+    padding: 8px 12px 14px;
     flex: 1;
     min-height: 0;
   }
   body.results-collapsed .calc-page .bulk-results {
     display: none;
+  }
+  .calc-page .result-pct {
+    font-size: 1.65rem;
+    line-height: 1.1;
+  }
+  .calc-page .result-ko {
+    font-size: 1.05rem;
+    font-weight: 800;
   }
 }
 
@@ -713,39 +723,127 @@ html[data-ui="ipad"] .member-grid {
 .bulk-card {
   background: #fff;
   border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 10px;
+  border-radius: 12px;
+  padding: 12px;
   display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 6px 10px;
-  align-items: center;
+  gap: 6px;
 }
 .bulk-card.empty {
   color: var(--muted);
   opacity: 0.7;
 }
-.bulk-card .who {
+.bulk-card .who,
+.bulk-card .result-matchup {
   font-weight: 800;
-  font-size: 1rem;
+  font-size: 0.95rem;
 }
 .bulk-card .meta {
   font-size: var(--ui-small);
   color: var(--muted);
-  grid-column: 1 / -1;
 }
-.bulk-card .dmg {
+.bulk-card .dmg,
+.bulk-card .result-pct {
+  font-weight: 900;
+  font-size: 1.45rem;
+  letter-spacing: -0.02em;
+}
+.bulk-card .ko,
+.bulk-card .result-ko {
+  font-size: 1rem;
   font-weight: 800;
-  font-size: 1.15rem;
-  text-align: right;
 }
-.bulk-card .ko {
-  font-size: var(--ui-small);
-  text-align: right;
+.bulk-card .result-dmg {
+  font-size: 0.9rem;
   color: var(--muted);
 }
-.bulk-card.tone-ok .dmg { color: var(--ok); }
-.bulk-card.tone-warn .dmg { color: var(--warn); }
-.bulk-card.tone-bad .dmg { color: var(--bad); }
+.bulk-card .result-crit {
+  font-size: 0.85rem;
+  color: #a33b3b;
+  font-weight: 700;
+}
+.result-details-wrap {
+  margin-top: 4px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.result-details-wrap summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+.bulk-card.tone-ok .dmg,
+.bulk-card.tone-ok .result-pct { color: var(--ok); }
+.bulk-card.tone-warn .dmg,
+.bulk-card.tone-warn .result-pct { color: var(--warn); }
+.bulk-card.tone-bad .dmg,
+.bulk-card.tone-bad .result-pct { color: var(--bad); }
+
+.mode-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin: 8px 0 4px;
+}
+.mode-tab {
+  min-height: var(--ui-tap);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+.mode-tab.on {
+  border-color: var(--accent);
+  background: #e8f3f8;
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.results-head-main {
+  display: grid;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.result-mini-bar {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--accent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.slot-tabs-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+.slot-tabs-row .slot-tabs {
+  flex: 1;
+  min-width: 0;
+}
+.import-shot-fields {
+  display: grid;
+  gap: 10px;
+  margin: 10px 0;
+}
+.import-shot-fields input[type="file"] {
+  width: 100%;
+  margin-top: 4px;
+}
+.import-preview {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0;
+  max-height: 40vh;
+  overflow: auto;
+}
+.import-card {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: #fff;
+  font-size: 0.85rem;
+}
 
 .atk-summary { display: grid; gap: 8px; }
 .atk-summary-main {

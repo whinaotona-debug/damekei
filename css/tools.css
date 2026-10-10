@@ -485,16 +485,17 @@ body.battle-live .app-header {
   position: relative;
 }
 .battle-arena {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
+  max-height: 46dvh;
   display: grid;
-  grid-template-rows: auto 1fr 1fr;
-  gap: 8px;
+  grid-template-rows: auto minmax(0, 1fr) minmax(0, 1fr);
+  gap: 6px;
   background:
     radial-gradient(ellipse at 50% 30%, rgba(255,255,255,.25), transparent 55%),
     linear-gradient(180deg, #5a9fd4 0%, #9ec9e8 38%, #7aaa55 38%, #4f7f38 100%);
   border-radius: 0;
-  padding: 10px 12px 8px;
+  padding: 8px 10px 6px;
   border: none;
   overflow: hidden;
   position: relative;
@@ -560,14 +561,14 @@ body.battle-live .app-header {
 }
 .battle-sprite {
   flex: 0 0 auto;
-  width: 120px;
-  height: 120px;
+  width: min(96px, 22vw);
+  height: min(96px, 22vw);
   display: grid;
   place-items: center;
 }
 .battle-sprite .poke-img {
-  width: 120px !important;
-  height: 120px !important;
+  width: min(96px, 22vw) !important;
+  height: min(96px, 22vw) !important;
 }
 .battle-sprite.atk {
   animation: battle-atk 0.45s ease;
@@ -644,29 +645,36 @@ body.battle-live .app-header {
 .hp-bar.low > span { background: linear-gradient(90deg, #a33b3b, #e07a7a); }
 
 .battle-hud {
-  flex: 0 0 auto;
-  display: grid;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   gap: 0;
   background: #101820;
 }
 .battle-log {
+  flex: 1 1 auto;
+  min-height: 48px;
+  max-height: min(16vh, 120px);
   background: rgba(16, 24, 32, 0.96);
   color: #e8eef2;
   border-radius: 0;
-  padding: 10px 14px;
-  max-height: min(22vh, 180px);
+  padding: 8px 12px;
   overflow: auto;
-  font-size: 0.9rem;
-  line-height: 1.45;
+  font-size: 0.85rem;
+  line-height: 1.4;
   border-top: 1px solid rgba(255,255,255,.08);
+  -webkit-overflow-scrolling: touch;
 }
 .battle-log div { margin-bottom: 4px; }
 .battle-cmd {
+  flex: 0 0 auto;
   background: #16202a;
   border: none;
   border-radius: 0;
-  padding: 10px 12px 14px;
+  padding: 8px 10px calc(10px + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid rgba(255,255,255,.06);
+  z-index: 2;
 }
 .battle-actions {
   display: grid;
@@ -732,16 +740,36 @@ body.battle-busy .battle-cmd {
 }
 
 @media (min-width: 768px) {
+  .battle-arena {
+    max-height: 52dvh;
+  }
   .battle-sprite {
-    width: 160px;
-    height: 160px;
+    width: 140px;
+    height: 140px;
   }
   .battle-sprite .poke-img {
-    width: 160px !important;
-    height: 160px !important;
+    width: 140px !important;
+    height: 140px !important;
   }
   .battle-log {
-    max-height: min(26vh, 220px);
-    font-size: 1rem;
+    max-height: min(18vh, 160px);
+    font-size: 0.95rem;
+  }
+}
+
+@media (max-height: 700px) {
+  .battle-arena {
+    max-height: 38dvh;
+  }
+  .battle-sprite {
+    width: min(72px, 18vw);
+    height: min(72px, 18vw);
+  }
+  .battle-sprite .poke-img {
+    width: min(72px, 18vw) !important;
+    height: min(72px, 18vw) !important;
+  }
+  .battle-log {
+    max-height: min(12vh, 88px);
   }
 }
