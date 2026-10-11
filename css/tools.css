@@ -485,17 +485,17 @@ body.battle-live .app-header {
   position: relative;
 }
 .battle-arena {
-  flex: 1 1 auto;
-  min-height: 0;
-  max-height: 46dvh;
+  flex: 1 1 0;
+  min-height: 120px;
+  max-height: none;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) minmax(0, 1fr);
-  gap: 6px;
+  gap: 4px;
   background:
     radial-gradient(ellipse at 50% 30%, rgba(255,255,255,.25), transparent 55%),
     linear-gradient(180deg, #5a9fd4 0%, #9ec9e8 38%, #7aaa55 38%, #4f7f38 100%);
   border-radius: 0;
-  padding: 8px 10px 6px;
+  padding: 6px 8px 4px;
   border: none;
   overflow: hidden;
   position: relative;
@@ -645,41 +645,87 @@ body.battle-live .app-header {
 .hp-bar.low > span { background: linear-gradient(90deg, #a33b3b, #e07a7a); }
 
 .battle-hud {
-  flex: 1 1 auto;
-  min-height: 0;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   gap: 0;
   background: #101820;
+  max-height: 58dvh;
 }
 .battle-log {
-  flex: 1 1 auto;
-  min-height: 48px;
-  max-height: min(16vh, 120px);
+  flex: 0 1 auto;
+  min-height: 36px;
+  max-height: min(12vh, 96px);
   background: rgba(16, 24, 32, 0.96);
   color: #e8eef2;
   border-radius: 0;
-  padding: 8px 12px;
+  padding: 6px 10px;
   overflow: auto;
-  font-size: 0.85rem;
-  line-height: 1.4;
+  font-size: 0.8rem;
+  line-height: 1.35;
   border-top: 1px solid rgba(255,255,255,.08);
   -webkit-overflow-scrolling: touch;
+  order: 1;
 }
-.battle-log div { margin-bottom: 4px; }
+.battle-log div { margin-bottom: 3px; }
 .battle-cmd {
   flex: 0 0 auto;
+  order: 2;
   background: #16202a;
   border: none;
   border-radius: 0;
   padding: 8px 10px calc(10px + env(safe-area-inset-bottom, 0px));
-  border-top: 1px solid rgba(255,255,255,.06);
-  z-index: 2;
+  border-top: 2px solid rgba(255,255,255,.12);
+  z-index: 3;
+  box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.25);
 }
 .battle-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 6px;
+}
+.battle-actions .battle-move.selector-btn {
+  min-height: 52px;
+  padding: 6px 8px;
+  background: #243140;
+  border: 1px solid rgba(255,255,255,.14);
+  color: #f2f6fa;
+}
+.battle-actions .battle-move .k {
+  font-size: 0.72rem;
+  color: #a8b8c8;
+}
+.battle-actions .battle-move .title {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #fff;
+}
+.battle-actions .battle-move .sub {
+  font-size: 0.72rem;
+  color: #8fa0b0;
+}
+.battle-cmd .select-row {
+  margin-top: 6px;
+}
+.battle-cmd .select-chip {
+  min-width: 0;
+  padding: 6px 8px;
+  font-size: 0.82rem;
+  background: #1c2834;
+  border-color: rgba(255,255,255,.16);
+  color: #e8eef2;
+}
+.battle-cmd .hint {
+  color: #9aafc0;
+  font-size: 0.78rem;
+}
+.battle-cmd-foot {
+  margin-top: 6px;
+}
+.battle-cmd-foot .icon-btn {
+  background: #2a3542;
+  color: #dce6f0;
+  border: 1px solid rgba(255,255,255,.12);
 }
 .battle-move.disabled,
 .battle-move:disabled {
@@ -740,9 +786,6 @@ body.battle-busy .battle-cmd {
 }
 
 @media (min-width: 768px) {
-  .battle-arena {
-    max-height: 52dvh;
-  }
   .battle-sprite {
     width: 140px;
     height: 140px;
@@ -752,24 +795,38 @@ body.battle-busy .battle-cmd {
     height: 140px !important;
   }
   .battle-log {
-    max-height: min(18vh, 160px);
-    font-size: 0.95rem;
+    max-height: min(14vh, 120px);
+    font-size: 0.9rem;
+  }
+  .battle-hud {
+    max-height: 50dvh;
   }
 }
 
 @media (max-height: 700px) {
-  .battle-arena {
-    max-height: 38dvh;
-  }
   .battle-sprite {
-    width: min(72px, 18vw);
-    height: min(72px, 18vw);
+    width: min(64px, 16vw);
+    height: min(64px, 16vw);
   }
   .battle-sprite .poke-img {
-    width: min(72px, 18vw) !important;
-    height: min(72px, 18vw) !important;
+    width: min(64px, 16vw) !important;
+    height: min(64px, 16vw) !important;
   }
   .battle-log {
-    max-height: min(12vh, 88px);
+    max-height: min(9vh, 64px);
+    min-height: 28px;
+  }
+  .battle-actions .battle-move.selector-btn {
+    min-height: 44px;
+  }
+  .battle-actions .battle-move .sub {
+    display: none;
+  }
+  .battle-field-status {
+    font-size: 0.7rem;
+    padding: 4px 8px;
+  }
+  .battle-side {
+    padding: 6px 8px;
   }
 }

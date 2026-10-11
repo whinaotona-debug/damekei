@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="./css/style.css?v=20260922c" />
   <link rel="stylesheet" href="./css/hub.css?v=20260922c" />
   <link rel="stylesheet" href="./css/type-icons.css?v=20260922c" />
-  <link rel="stylesheet" href="./css/tools.css?v=20260922k" />
+  <link rel="stylesheet" href="./css/tools.css?v=20261011a" />
 </head>
 <body class="tools-page">
   <div class="hub-app">
@@ -95,19 +95,19 @@
         </div>
 
         <div class="battle-hud">
-          <div class="battle-log" id="battle-log" aria-live="polite"></div>
           <div class="battle-cmd">
-            <div id="move-actions" class="battle-actions"></div>
-            <div id="switch-actions" class="select-row" style="margin-top:8px"></div>
-            <div style="margin-top:8px">
+            <div id="move-actions" class="battle-actions" aria-label="技を選ぶ"></div>
+            <div id="switch-actions" class="select-row"></div>
+            <div class="battle-cmd-foot">
               <button type="button" class="icon-btn" id="btn-reset">試合をやめる</button>
             </div>
           </div>
+          <div class="battle-log" id="battle-log" aria-live="polite"></div>
         </div>
       </div>
     </div>
   </div>
 
-  <script type="module" src="./js/battle-app.js?v=20260922j"></script>
+  <script type="module" src="./js/battle-app.js?v=20261011a"></script>
 </body>
 </html>

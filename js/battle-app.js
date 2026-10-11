@@ -382,8 +382,8 @@ function renderFight() {
           .map((i) => {
             const mon = b.player.party[i];
             return `<button type="button" class="select-chip" data-switch="${i}">
-              ${pokeImgHtml(mon.species, { size: 28, dex: mon.poke?.dex, round: true })}
-              ${mon.species}（${mon.hp}/${mon.maxHp}）
+              ${pokeImgHtml(mon.species, { size: 24, dex: mon.poke?.dex, round: true })}
+              ${mon.species}
             </button>`;
           })
           .join("")
